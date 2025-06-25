@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import './Login.css';
 
-const Login = () => {
+const Login = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [loginError, setLoginError] = useState('');
 
   // Function to get time-based greeting
   const getTimeBasedGreeting = () => {
@@ -19,11 +20,16 @@ const Login = () => {
       return "Good Night";
     }
   };
-
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('Login attempt:', { email, password, rememberMe });
-    // Add login logic here
+    setLoginError('');
+    
+    // Call the login function passed from App component
+    const loginSuccess = onLogin({ email, password, rememberMe });
+    
+    if (!loginSuccess) {
+      setLoginError('Invalid email or password. Please try again.');
+    }
   };
 
   const handleGoogleSignIn = () => {
@@ -39,13 +45,24 @@ const Login = () => {
   return (
     <div className="login-container">
       <div className="login-left">
-        <div className="login-form-container">
-          <div className="login-header">
+        <div className="login-form-container">          <div className="login-header">
             <h1>WELCOME BACK</h1>
             <p>Welcome back! Please enter your details.</p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="login-form">
+            
+            {/* Demo credentials info */}
+            <div className="demo-credentials">
+              <h4>Demo Login Credentials:</h4>
+              <p><strong>Email:</strong> admin@crystalpharmacy.com</p>
+              <p><strong>Password:</strong> admin123</p>
+            </div>
+          </div>          <form onSubmit={handleSubmit} className="login-form">
+            {/* Error message */}
+            {loginError && (
+              <div className="error-message">
+                {loginError}
+              </div>
+            )}
+            
             <div className="form-group">
               <label htmlFor="email">Email</label>
               <input

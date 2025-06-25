@@ -47,13 +47,48 @@ html, body {
 
 .login-header p {
   color: #6b7280;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
+}
+
+.demo-credentials {
+  background: linear-gradient(135deg, #e0f2fe, #f0f9ff);
+  border: 1px solid #0ea5e9;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.demo-credentials h4 {
+  color: #0284c7;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.demo-credentials p {
+  margin: 0.25rem 0;
+  color: #1e293b;
+}
+
+.demo-credentials strong {
+  color: #0ea5e9;
 }
 
 .login-form {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+.error-message {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  text-align: center;
+  margin-bottom: 0.5rem;
 }
 
 .form-group {
