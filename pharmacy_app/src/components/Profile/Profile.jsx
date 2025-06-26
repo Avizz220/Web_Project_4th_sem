@@ -10,17 +10,12 @@ const Profile = ({ onBack }) => {
     };
   }, []);
 
-  const [searchQuery, setSearchQuery] = useState('');
   const [profileData, setProfileData] = useState({
     firstName: 'Peter',
     lastName: 'Griffin',
-    username: 'thepeterngriffin',
     email: 'hello@designtoproducts.io',
     birthday: { day: '09', month: '12', year: '1975' },
-    location: 'Quahog',
     gender: '',
-    height: '',
-    weight: '',
     userId: 'siderabcdefghijklmnopqrstuvwxyz'
   });
 
@@ -55,10 +50,6 @@ const Profile = ({ onBack }) => {
       hour: '2-digit',
       minute: '2-digit'
     });
-  };
-
-  const handleSearch = (e) => {
-    setSearchQuery(e.target.value);
   };
 
   const handleProfileChange = (field, value) => {
@@ -103,16 +94,9 @@ const Profile = ({ onBack }) => {
       {/* Header */}
       <header className="profile-header">
         <div className="header-left">
-          <div className="search-container">
-            <input
-              type="text"
-              placeholder="Search for anything here..."
-              value={searchQuery}
-              onChange={handleSearch}
-              className="search-input"
-            />
-            <button className="search-btn">🔍</button>
-          </div>
+          <button className="back-btn-header" onClick={onBack}>
+            ← Back to Dashboard
+          </button>
         </div>
         <div className="header-right">
           <div className="language-selector">
@@ -129,13 +113,6 @@ const Profile = ({ onBack }) => {
         </div>
       </header>      {/* Profile Content */}
       <div className="profile-content">
-        <div className="profile-title">
-          <button className="back-btn" onClick={onBack}>
-            ← Back to Dashboard
-          </button>
-          <h1>Application Settings</h1>
-        </div>
-
         {/* Profile Information Form */}
         <div className="profile-form-container">
           <div className="form-section">
@@ -144,7 +121,7 @@ const Profile = ({ onBack }) => {
             <div className="form-grid">
               <div className="form-group">
                 <label className="form-label required">
-                  REQUIRED FIELDS<br />
+                  
                   FIRST NAME
                 </label>
                 <input
@@ -166,19 +143,9 @@ const Profile = ({ onBack }) => {
               </div>
 
               <div className="form-group">
-                <label className="form-label required">USERNAME</label>
-                <input
-                  type="text"
-                  value={profileData.username}
-                  onChange={(e) => handleProfileChange('username', e.target.value)}
-                  className="form-input"
-                />
-              </div>
-
-              <div className="form-group">
                 <label className="form-label required">
                   EMAIL
-                  <span className="verify-email">Verify Email</span>
+                
                 </label>
                 <input
                   type="email"
@@ -231,16 +198,6 @@ const Profile = ({ onBack }) => {
               </div>
 
               <div className="form-group">
-                <label className="form-label">LOCATION</label>
-                <input
-                  type="text"
-                  value={profileData.location}
-                  onChange={(e) => handleProfileChange('location', e.target.value)}
-                  className="form-input"
-                />
-              </div>
-
-              <div className="form-group">
                 <label className="form-label">GENDER</label>
                 <select
                   value={profileData.gender}
@@ -251,38 +208,6 @@ const Profile = ({ onBack }) => {
                   <option value="male">Male</option>
                   <option value="female">Female</option>
                   <option value="other">Other</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">HEIGHT</label>
-                <select
-                  value={profileData.height}
-                  onChange={(e) => handleProfileChange('height', e.target.value)}
-                  className="form-input"
-                >
-                  <option value="">Select Height</option>
-                  {Array.from({ length: 50 }, (_, i) => (
-                    <option key={150 + i} value={`${150 + i} cm`}>
-                      {150 + i} cm
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">WEIGHT</label>
-                <select
-                  value={profileData.weight}
-                  onChange={(e) => handleProfileChange('weight', e.target.value)}
-                  className="form-input"
-                >
-                  <option value="">Select Weight</option>
-                  {Array.from({ length: 100 }, (_, i) => (
-                    <option key={40 + i} value={`${40 + i} kg`}>
-                      {40 + i} kg
-                    </option>
-                  ))}
                 </select>
               </div>
 

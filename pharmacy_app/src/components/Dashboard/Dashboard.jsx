@@ -139,6 +139,11 @@ const Dashboard = ({ onLogout }) => {
     return <Suppliers onBack={navigateToDashboard} />;
   }
 
+  // Render Suppliers component if current view is suppliers
+  if (currentView === 'suppliers') {
+    return <Suppliers onBack={navigateToDashboard} />;
+  }
+
   return (
     <div className="dashboard-container">
       {/* Sidebar */}

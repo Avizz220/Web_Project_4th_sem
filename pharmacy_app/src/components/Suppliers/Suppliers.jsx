@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import './Suppliers.css';
-import { FiSearch, FiUsers, FiPackage, FiPlus } from 'react-icons/fi';
+import { FiSearch, FiUsers, FiPackage, FiPlus, FiX } from 'react-icons/fi';
 import { HiChevronLeft, HiChevronRight } from 'react-icons/hi';
 import { BsArrowUp, BsArrowDown, BsSun, BsMoon, BsCloud } from 'react-icons/bs';
 
@@ -9,6 +9,22 @@ const Suppliers = ({ onBack }) => {
   const [activeTab, setActiveTab] = useState('all');
   const [sortOption, setSortOption] = useState('newest');
   const [supplierSearchQuery, setSupplierSearchQuery] = useState('');
+  
+  // Modal state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    name: '',
+    company: '',
+    email: '',
+    phone: '',
+    supplyType: 'Medicine'
+  });
+  
+  // Form validation
+  const [formErrors, setFormErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Get current time-based greeting and icon
   const getTimeBasedGreeting = () => {
@@ -48,7 +64,21 @@ const Suppliers = ({ onBack }) => {
   };
 
   const handleAddNewSupplier = () => {
-    console.log('Add new supplier clicked');
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    // Reset form data and errors when closing modal
+    setFormData({
+      name: '',
+      company: '',
+      email: '',
+      phone: '',
+      supplyType: 'Medicine'
+    });
+    setFormErrors({});
+    setIsSubmitting(false);
   };
 
   const handleTabChange = (tab) => {
@@ -57,6 +87,88 @@ const Suppliers = ({ onBack }) => {
 
   const handleSortChange = (e) => {
     setSortOption(e.target.value);
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setFormData({
+      name: '',
+      company: '',
+      email: '',
+      phone: '',
+      supplyType: 'Medicine',
+      address: '',
+      contactPerson: '',
+      website: '',
+      notes: ''
+    });
+    setFormErrors({});
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value
+    });
+    
+    // Clear error for this field when user starts typing
+    if (formErrors[name]) {
+      setFormErrors({
+        ...formErrors,
+        [name]: ''
+      });
+    }
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    
+    // Required fields validation
+    if (!formData.name.trim()) errors.name = "Supplier name is required";
+    if (!formData.company.trim()) errors.company = "Company name is required";
+    
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!formData.email.trim()) {
+      errors.email = "Email is required";
+    } else if (!emailRegex.test(formData.email)) {
+      errors.email = "Invalid email format";
+    }
+    
+    // Phone validation
+    const phoneRegex = /^[\d\s+()-]{10,15}$/;
+    if (!formData.phone.trim()) {
+      errors.phone = "Phone number is required";
+    } else if (!phoneRegex.test(formData.phone)) {
+      errors.phone = "Invalid phone number format";
+    }
+    
+    return errors;
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    
+    // Validate form
+    const validationErrors = validateForm();
+    setFormErrors(validationErrors);
+    
+    // If no errors, proceed with submission
+    if (Object.keys(validationErrors).length === 0) {
+      setIsSubmitting(true);
+      
+      // Simulate API call
+      setTimeout(() => {
+        console.log("New supplier data:", formData);
+        setIsSubmitting(false);
+        handleCloseModal();
+        
+        // Here you would typically update the suppliers array with the new data
+        // For now, let's just show an alert
+        alert(`Supplier ${formData.name} added successfully!`);
+      }, 1000);
+    }
   };
 
   // Sample suppliers data
@@ -359,6 +471,121 @@ const Suppliers = ({ onBack }) => {
           </div>
         </div>
       </div>
+      
+      {/* Add Supplier Modal */}
+      {isModalOpen && (
+        <div className="modal-overlay">
+          <div className="supplier-modal">
+            <div className="modal-header">
+              <h2>Add New Supplier</h2>
+              <button className="close-modal-btn" onClick={handleCloseModal}>
+                <FiX />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSubmit} className="supplier-form">
+              <div className="form-content">
+                <div className="form-group">
+                  <label htmlFor="name">Supplier Name <span className="required-mark">*</span></label>
+                  <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    className={formErrors.name ? 'error' : ''}
+                    placeholder="Enter supplier name"
+                  />
+                  {formErrors.name && <span className="error-message">{formErrors.name}</span>}
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="company">Company <span className="required-mark">*</span></label>
+                  <input
+                    type="text"
+                    id="company"
+                    name="company"
+                    value={formData.company}
+                    onChange={handleInputChange}
+                    className={formErrors.company ? 'error' : ''}
+                    placeholder="Enter company name"
+                  />
+                  {formErrors.company && <span className="error-message">{formErrors.company}</span>}
+                </div>
+                
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="email">Email Address <span className="required-mark">*</span></label>
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      className={formErrors.email ? 'error' : ''}
+                      placeholder="Enter email address"
+                    />
+                    {formErrors.email && <span className="error-message">{formErrors.email}</span>}
+                  </div>
+                  
+                  <div className="form-group">
+                    <label htmlFor="phone">Phone Number <span className="required-mark">*</span></label>
+                    <input
+                      type="text"
+                      id="phone"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      className={formErrors.phone ? 'error' : ''}
+                      placeholder="Enter phone number"
+                    />
+                    {formErrors.phone && <span className="error-message">{formErrors.phone}</span>}
+                  </div>
+                </div>
+                
+                <div className="form-group supply-type-group">
+                  <label htmlFor="supplyType">Supply Type <span className="required-mark">*</span></label>
+                  <div className="supply-type-buttons">
+                    <label className={`supply-type-option ${formData.supplyType === 'Medicine' ? 'active' : ''}`}>
+                      <input
+                        type="radio"
+                        name="supplyType"
+                        value="Medicine"
+                        checked={formData.supplyType === 'Medicine'}
+                        onChange={handleInputChange}
+                        hidden
+                      />
+                      <span className="option-icon">💊</span>
+                      <span className="option-text">Medicine</span>
+                    </label>
+                    <label className={`supply-type-option ${formData.supplyType === 'Equipment' ? 'active' : ''}`}>
+                      <input
+                        type="radio"
+                        name="supplyType"
+                        value="Equipment"
+                        checked={formData.supplyType === 'Equipment'}
+                        onChange={handleInputChange}
+                        hidden
+                      />
+                      <span className="option-icon">🔧</span>
+                      <span className="option-text">Equipment</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="form-actions">
+                <button type="button" className="cancel-btn" onClick={handleCloseModal}>
+                  Cancel
+                </button>
+                <button type="submit" className="submit-btn" disabled={isSubmitting}>
+                  {isSubmitting ? 'Adding...' : 'Add Supplier'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

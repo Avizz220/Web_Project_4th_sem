@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import './Customers.css';
-import { FiSearch, FiUsers, FiUserCheck, FiPlus } from 'react-icons/fi';
+import { FiSearch, FiUsers, FiUserCheck, FiPlus, FiX } from 'react-icons/fi';
 import { HiChevronLeft, HiChevronRight } from 'react-icons/hi';
 import { BsArrowUp, BsArrowDown, BsSun, BsMoon, BsCloud } from 'react-icons/bs';
 
@@ -9,6 +9,22 @@ const Customers = ({ onBack }) => {
   const [activeTab, setActiveTab] = useState('all');
   const [sortOption, setSortOption] = useState('newest');
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
+
+  // Modal state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    gender: 'Male',
+    lastTransaction: new Date().toISOString().split('T')[0]
+  });
+  
+  // Form validation
+  const [formErrors, setFormErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Get current time-based greeting and icon
   const getTimeBasedGreeting = () => {
@@ -48,7 +64,86 @@ const Customers = ({ onBack }) => {
   };
 
   const handleAddNewCustomer = () => {
-    console.log('Add new customer clicked');
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    // Reset form data and errors when closing modal
+    setFormData({
+      name: '',
+      phone: '',
+      email: '',
+      gender: 'Male',
+      lastTransaction: new Date().toISOString().split('T')[0]
+    });
+    setFormErrors({});
+    setIsSubmitting(false);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value
+    });
+    
+    // Clear error for this field when user starts typing
+    if (formErrors[name]) {
+      setFormErrors({
+        ...formErrors,
+        [name]: ''
+      });
+    }
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    
+    // Required fields validation
+    if (!formData.name.trim()) errors.name = "Customer name is required";
+    
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!formData.email.trim()) {
+      errors.email = "Email is required";
+    } else if (!emailRegex.test(formData.email)) {
+      errors.email = "Invalid email format";
+    }
+    
+    // Phone validation
+    const phoneRegex = /^[\d\s+()-]{10,15}$/;
+    if (!formData.phone.trim()) {
+      errors.phone = "Phone number is required";
+    } else if (!phoneRegex.test(formData.phone)) {
+      errors.phone = "Invalid phone number format";
+    }
+    
+    return errors;
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    
+    // Validate form
+    const validationErrors = validateForm();
+    setFormErrors(validationErrors);
+    
+    // If no errors, proceed with submission
+    if (Object.keys(validationErrors).length === 0) {
+      setIsSubmitting(true);
+      
+      // Simulate API call
+      setTimeout(() => {
+        console.log("New customer data:", formData);
+        setIsSubmitting(false);
+        handleCloseModal();
+        
+        // Here you would typically update the customers array with the new data
+        // For now, let's just show an alert
+        alert(`Customer ${formData.name} added successfully!`);
+      }, 1000);
+    }
   };
 
   const handleTabChange = (tab) => {
@@ -363,6 +458,127 @@ const Customers = ({ onBack }) => {
           </div>
         </div>
       </div>
+
+      {/* Add Customer Modal */}
+      {isModalOpen && (
+        <div className="modal-overlay">
+          <div className="customer-modal">
+            <div className="modal-header">
+              <h2>Add New Customer</h2>
+              <button className="close-modal-btn" onClick={handleCloseModal}>
+                <FiX />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSubmit} className="customer-form">
+              <div className="form-header">
+                <span className="form-icon">👤</span>
+                <h3>Enter Customer Information</h3>
+              </div>
+              
+              <div className="form-content">
+                <div className="form-group">
+                  <label htmlFor="name">Customer Name <span className="required-mark">*</span></label>
+                  <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    className={formErrors.name ? 'error' : ''}
+                    placeholder="Enter customer name"
+                  />
+                  {formErrors.name && <span className="error-message">{formErrors.name}</span>}
+                </div>
+                
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="email">Email Address <span className="required-mark">*</span></label>
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      className={formErrors.email ? 'error' : ''}
+                      placeholder="Enter email address"
+                    />
+                    {formErrors.email && <span className="error-message">{formErrors.email}</span>}
+                  </div>
+                  
+                  <div className="form-group">
+                    <label htmlFor="phone">Phone Number <span className="required-mark">*</span></label>
+                    <input
+                      type="text"
+                      id="phone"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      className={formErrors.phone ? 'error' : ''}
+                      placeholder="Enter phone number"
+                    />
+                    {formErrors.phone && <span className="error-message">{formErrors.phone}</span>}
+                  </div>
+                </div>
+                
+                <div className="form-row">
+                  <div className="form-group gender-group">
+                    <label htmlFor="gender">Gender <span className="required-mark">*</span></label>
+                    <div className="gender-buttons">
+                      <label className={`gender-option ${formData.gender === 'Male' ? 'active' : ''}`}>
+                        <input
+                          type="radio"
+                          name="gender"
+                          value="Male"
+                          checked={formData.gender === 'Male'}
+                          onChange={handleInputChange}
+                          hidden
+                        />
+                        <span className="option-icon">👨</span>
+                        <span className="option-text">Male</span>
+                      </label>
+                      <label className={`gender-option ${formData.gender === 'Female' ? 'active' : ''}`}>
+                        <input
+                          type="radio"
+                          name="gender"
+                          value="Female"
+                          checked={formData.gender === 'Female'}
+                          onChange={handleInputChange}
+                          hidden
+                        />
+                        <span className="option-icon">👩</span>
+                        <span className="option-text">Female</span>
+                      </label>
+                    </div>
+                  </div>
+                  
+                  <div className="form-group">
+                    <label htmlFor="lastTransaction">Last Transaction Date</label>
+                    <input
+                      type="date"
+                      id="lastTransaction"
+                      name="lastTransaction"
+                      value={formData.lastTransaction}
+                      onChange={handleInputChange}
+                      className={formErrors.lastTransaction ? 'error' : ''}
+                    />
+                    {formErrors.lastTransaction && <span className="error-message">{formErrors.lastTransaction}</span>}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="form-actions">
+                <button type="button" className="cancel-btn" onClick={handleCloseModal}>
+                  Cancel
+                </button>
+                <button type="submit" className="submit-btn" disabled={isSubmitting}>
+                  {isSubmitting ? 'Adding...' : 'Add Customer'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
