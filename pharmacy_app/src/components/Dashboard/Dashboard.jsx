@@ -6,6 +6,7 @@ import PaymentReport from '../PaymentReport/PaymentReport';
 import SalesReport from '../SalesReport/SalesReport';
 import Profile from '../Profile/Profile';
 import EquipmentStock from '../EquipmentStock/EquipmentStock';
+import Customers from '../Customers/Customers';
 
 const Dashboard = ({ onLogout }) => {
   const [selectedMonth, setSelectedMonth] = useState('January 2022');
@@ -53,6 +54,11 @@ const Dashboard = ({ onLogout }) => {
 
   const navigateToProfile = () => {
     setCurrentView('profile');
+  };
+  
+  const navigateToCustomers = () => {
+    setCurrentView('customers');
+    setOpenDropdowns({}); // Close all dropdowns
   };
 
   // Get current time-based greeting
@@ -115,6 +121,11 @@ const Dashboard = ({ onLogout }) => {
   // Render Equipment Stock component if current view is equipment-stock
   if (currentView === 'equipment-stock') {
     return <EquipmentStock onBack={navigateToDashboard} />;
+  }
+  
+  // Render Customers component if current view is customers
+  if (currentView === 'customers') {
+    return <Customers onBack={navigateToDashboard} />;
   }
 
   return (
@@ -207,7 +218,7 @@ const Dashboard = ({ onLogout }) => {
             </div>
             {openDropdowns.contact && (
               <div className="dropdown-menu">
-                <div className="dropdown-item">
+                <div className="dropdown-item" onClick={navigateToCustomers}>
                   <span className="dropdown-icon">👤</span>
                   <span className="dropdown-text">Customers</span>
                 </div>

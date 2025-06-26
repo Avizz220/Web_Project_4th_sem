@@ -1,0 +1,13 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Start Pharmacy App",
+			"type": "shell",
+			"command": "cd c:\\Users\\Avishka\\Documents\\Web_Project_4th_sem\\pharmacy_app && npm run dev",
+			"group": "test",
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}
