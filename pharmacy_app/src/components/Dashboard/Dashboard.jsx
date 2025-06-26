@@ -7,6 +7,7 @@ import SalesReport from '../SalesReport/SalesReport';
 import Profile from '../Profile/Profile';
 import EquipmentStock from '../EquipmentStock/EquipmentStock';
 import Customers from '../Customers/Customers';
+import Suppliers from '../Suppliers/Suppliers';
 
 const Dashboard = ({ onLogout }) => {
   const [selectedMonth, setSelectedMonth] = useState('January 2022');
@@ -58,6 +59,11 @@ const Dashboard = ({ onLogout }) => {
   
   const navigateToCustomers = () => {
     setCurrentView('customers');
+    setOpenDropdowns({}); // Close all dropdowns
+  };
+  
+  const navigateToSuppliers = () => {
+    setCurrentView('suppliers');
     setOpenDropdowns({}); // Close all dropdowns
   };
 
@@ -126,6 +132,11 @@ const Dashboard = ({ onLogout }) => {
   // Render Customers component if current view is customers
   if (currentView === 'customers') {
     return <Customers onBack={navigateToDashboard} />;
+  }
+  
+  // Render Suppliers component if current view is suppliers
+  if (currentView === 'suppliers') {
+    return <Suppliers onBack={navigateToDashboard} />;
   }
 
   return (
@@ -222,7 +233,7 @@ const Dashboard = ({ onLogout }) => {
                   <span className="dropdown-icon">👤</span>
                   <span className="dropdown-text">Customers</span>
                 </div>
-                <div className="dropdown-item">
+                <div className="dropdown-item" onClick={navigateToSuppliers}>
                   <span className="dropdown-icon">🏭</span>
                   <span className="dropdown-text">Suppliers</span>
                 </div>
