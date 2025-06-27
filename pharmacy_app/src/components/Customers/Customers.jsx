@@ -16,8 +16,9 @@ const Customers = ({ onBack }) => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   
-  // Dropdown state
-  const [dropdownPosition, setDropdownPosition] = useState({ visible: false, x: 0, y: 0 });
+  // Action popup state
+  const [showActionPopup, setShowActionPopup] = useState(false);
+  const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
   const [activeRowId, setActiveRowId] = useState(null);
   
   // Form state
@@ -208,45 +209,40 @@ const Customers = ({ onBack }) => {
 
   const handleRowClick = (customer, e) => {
     e.preventDefault();
-    setSelectedCustomer(customer);
     
-    // Toggle dropdown if clicking on the same row
-    if (activeRowId === customer.id) {
-      setDropdownPosition({ visible: false, x: 0, y: 0 });
-      setActiveRowId(null);
-      return;
-    }
-    
-    setActiveRowId(customer.id);
-    
-    // Calculate position for dropdown
+    // Calculate position for the popup
     const rect = e.currentTarget.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    setDropdownPosition({
-      visible: true,
-      x: centerX,
-      y: rect.bottom + window.scrollY + 10 // Add a small gap between row and dropdown
+    setPopupPosition({
+      x: rect.left + window.scrollX + rect.width / 2,
+      y: rect.top + window.scrollY
     });
+    
+    setSelectedCustomer(customer);
+    setShowActionPopup(true);
+    setActiveRowId(customer.id);
   };
   
-  // Close dropdown when clicking outside
+  // Close the popup
+  const closePopup = () => {
+    setShowActionPopup(false);
+    setSelectedCustomer(null);
+    setActiveRowId(null);
+  };
+  
+  // Handle clicks outside the popup to close it
   useEffect(() => {
-    if (dropdownPosition.visible) {
-      const handleOutsideClick = (e) => {
-        // Don't close if clicking on the dropdown itself
-        if (e.target.closest('.row-dropdown-menu')) {
-          return;
-        }
-        setDropdownPosition({ visible: false, x: 0, y: 0 });
-        setActiveRowId(null);
-      };
-      
-      document.addEventListener('click', handleOutsideClick);
-      return () => {
-        document.removeEventListener('click', handleOutsideClick);
-      };
-    }
-  }, [dropdownPosition.visible]);
+    const handleClickOutside = (event) => {
+      if (showActionPopup && !event.target.closest('.action-popup') && 
+          !event.target.closest('.customer-table tr')) {
+        closePopup();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showActionPopup]);
 
   // Sample customers data
   const customers = [
@@ -695,36 +691,49 @@ const Customers = ({ onBack }) => {
         </div>
       )}
       
-      {/* Row Action Dropdown */}
-      {dropdownPosition.visible && (
-        <div 
-          className="row-dropdown-menu"
-          style={{ 
-            position: 'fixed', 
-            top: `${dropdownPosition.y}px`, 
-            left: `${dropdownPosition.x}px`,
-            transform: 'translateX(-50%)'
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button 
-            className="dropdown-item edit-item"
-            onClick={() => {
-              handleUpdateCustomer(selectedCustomer);
-              setDropdownPosition({ visible: false, x: 0, y: 0 });
-            }}
-          >
-            <FiEdit size={18} /> Update Customer
-          </button>
-          <button 
-            className="dropdown-item delete-item"
-            onClick={() => {
-              handleDeleteClick(selectedCustomer);
-              setDropdownPosition({ visible: false, x: 0, y: 0 });
-            }}
-          >
-            <FiTrash2 size={18} /> Delete Customer
-          </button>
+      {/* Action Popup */}
+      {showActionPopup && selectedCustomer && (
+        <div className="action-popup" style={{ left: popupPosition.x, top: popupPosition.y }}>
+          <div className="popup-content">
+            <h3>Customer Details</h3>
+            <div className="popup-field">
+              <strong>Name:</strong> {selectedCustomer.name}
+            </div>
+            <div className="popup-field">
+              <strong>Email:</strong> {selectedCustomer.email}
+            </div>
+            <div className="popup-field">
+              <strong>Phone:</strong> {selectedCustomer.phone}
+            </div>
+            <div className="popup-field">
+              <strong>Gender:</strong> {selectedCustomer.gender}
+            </div>
+            <div className="popup-field">
+              <strong>Last Transaction:</strong> {new Date(selectedCustomer.lastTransaction).toLocaleDateString('en-GB', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+              })}
+            </div>
+
+            <div className="popup-actions">
+              <button className="btn-update" onClick={() => {
+                handleUpdateCustomer(selectedCustomer);
+                closePopup();
+              }}>
+                <FiEdit /> Update
+              </button>
+              <button className="btn-delete" onClick={() => {
+                handleDeleteClick(selectedCustomer);
+                closePopup();
+              }}>
+                <FiTrash2 /> Delete
+              </button>
+            </div>
+            <button className="btn-close" onClick={closePopup}>
+              <FiX />
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -17,7 +17,8 @@ const Suppliers = ({ onBack }) => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   
   // Dropdown state
-  const [dropdownPosition, setDropdownPosition] = useState({ visible: false, x: 0, y: 0 });
+  const [showActionPopup, setShowActionPopup] = useState(false);
+  const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
   const [activeRowId, setActiveRowId] = useState(null);
   
   // Form state
@@ -336,45 +337,40 @@ const Suppliers = ({ onBack }) => {
 
   const handleRowClick = (supplier, e) => {
     e.preventDefault();
-    setSelectedSupplier(supplier);
     
-    // Toggle dropdown if clicking on the same row
-    if (activeRowId === supplier.id) {
-      setDropdownPosition({ visible: false, x: 0, y: 0 });
-      setActiveRowId(null);
-      return;
-    }
-    
-    setActiveRowId(supplier.id);
-    
-    // Calculate position for dropdown
+    // Calculate position for the popup
     const rect = e.currentTarget.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    setDropdownPosition({
-      visible: true,
-      x: centerX,
-      y: rect.bottom + window.scrollY + 10 // Add a small gap between row and dropdown
+    setPopupPosition({
+      x: rect.left + window.scrollX + rect.width / 2,
+      y: rect.top + window.scrollY
     });
+    
+    setSelectedSupplier(supplier);
+    setShowActionPopup(true);
+    setActiveRowId(supplier.id);
   };
   
-  // Close dropdown when clicking outside
+  // Close the popup
+  const closePopup = () => {
+    setShowActionPopup(false);
+    setSelectedSupplier(null);
+    setActiveRowId(null);
+  };
+  
+  // Handle clicks outside the popup to close it
   useEffect(() => {
-    if (dropdownPosition.visible) {
-      const handleOutsideClick = (e) => {
-        // Don't close if clicking on the dropdown itself
-        if (e.target.closest('.row-dropdown-menu')) {
-          return;
-        }
-        setDropdownPosition({ visible: false, x: 0, y: 0 });
-        setActiveRowId(null);
-      };
-      
-      document.addEventListener('click', handleOutsideClick);
-      return () => {
-        document.removeEventListener('click', handleOutsideClick);
-      };
-    }
-  }, [dropdownPosition.visible]);
+    const handleClickOutside = (event) => {
+      if (showActionPopup && !event.target.closest('.action-popup') && 
+          !event.target.closest('.supplier-table tr')) {
+        closePopup();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showActionPopup]);
 
   return (
     <div className="suppliers-container">
@@ -709,36 +705,45 @@ const Suppliers = ({ onBack }) => {
         </div>
       )}
       
-      {/* Row Action Dropdown */}
-      {dropdownPosition.visible && (
-        <div 
-          className="row-dropdown-menu"
-          style={{ 
-            position: 'fixed', 
-            top: `${dropdownPosition.y}px`, 
-            left: `${dropdownPosition.x}px`,
-            transform: 'translateX(-50%)'
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button 
-            className="dropdown-item edit-item"
-            onClick={() => {
-              handleUpdateSupplier(selectedSupplier);
-              setDropdownPosition({ visible: false, x: 0, y: 0 });
-            }}
-          >
-            <FiEdit size={18} /> Update Supplier
-          </button>
-          <button 
-            className="dropdown-item delete-item"
-            onClick={() => {
-              handleDeleteClick(selectedSupplier);
-              setDropdownPosition({ visible: false, x: 0, y: 0 });
-            }}
-          >
-            <FiTrash2 size={18} /> Delete Supplier
-          </button>
+      {/* Action Popup */}
+      {showActionPopup && selectedSupplier && (
+        <div className="action-popup" style={{ left: popupPosition.x, top: popupPosition.y }}>
+          <div className="popup-content">
+            <h3>Supplier Details</h3>
+            <div className="popup-field">
+              <strong>Name:</strong> {selectedSupplier.name}
+            </div>
+            <div className="popup-field">
+              <strong>Company:</strong> {selectedSupplier.company}
+            </div>
+            <div className="popup-field">
+              <strong>Email:</strong> {selectedSupplier.email}
+            </div>
+            <div className="popup-field">
+              <strong>Phone:</strong> {selectedSupplier.phone}
+            </div>
+            <div className="popup-field">
+              <strong>Type:</strong> {selectedSupplier.supplyType}
+            </div>
+
+            <div className="popup-actions">
+              <button className="btn-update" onClick={() => {
+                handleUpdateSupplier(selectedSupplier);
+                closePopup();
+              }}>
+                <FiEdit /> Update
+              </button>
+              <button className="btn-delete" onClick={() => {
+                handleDeleteClick(selectedSupplier);
+                closePopup();
+              }}>
+                <FiTrash2 /> Delete
+              </button>
+            </div>
+            <button className="btn-close" onClick={closePopup}>
+              <FiX />
+            </button>
+          </div>
         </div>
       )}
     </div>

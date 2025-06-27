@@ -1,8 +1,25 @@
 import React, { useState } from 'react';
 import './EquipmentStock.css';
+import { FiX, FiPlusCircle, FiPackage, FiHash, FiCheckCircle } from 'react-icons/fi';
 
 const EquipmentStock = ({ onBack }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newEquipment, setNewEquipment] = useState({
+    name: '',
+    model: '',
+    count: ''
+  });
+
+  // State for update/delete functionality
+  const [selectedEquipment, setSelectedEquipment] = useState(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [updateFormData, setUpdateFormData] = useState({
+    name: '',
+    model: '',
+    count: ''
+  });
 
   // Get current time-based greeting
   const getTimeBasedGreeting = () => {
@@ -36,7 +53,28 @@ const EquipmentStock = ({ onBack }) => {
   };
 
   const handleAddNewEquipment = () => {
-    console.log('Add new equipment clicked');
+    setShowAddForm(true);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewEquipment(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // Add your submit logic here
+    console.log('New equipment:', newEquipment);
+    setShowAddForm(false);
+    // Reset form
+    setNewEquipment({
+      name: '',
+      model: '',
+      count: ''
+    });
   };
 
   const handleViewFullDetail = (equipmentName) => {
@@ -47,52 +85,60 @@ const EquipmentStock = ({ onBack }) => {
     console.log(`Update stock for ${equipmentName}`);
   };
 
+  const handleRowClick = (equipment) => {
+    setSelectedEquipment(equipment);
+    setUpdateFormData(equipment);
+    setShowUpdateModal(true);
+  };
+
+  const handleUpdateEquipment = (e) => {
+    e.preventDefault();
+    // Add your update logic here
+    console.log('Updating equipment:', updateFormData);
+    setShowUpdateModal(false);
+  };
+
+  const handleDeleteEquipment = () => {
+    // Add your delete logic here
+    console.log('Deleting equipment:', selectedEquipment);
+    setShowDeleteConfirm(false);
+    setShowUpdateModal(false);
+  };
+
+  const handleUpdateInputChange = (e) => {
+    const { name, value } = e.target;
+    setUpdateFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
   // Sample equipment stock data
   const equipmentStock = [
     { 
-      id: 1,
       name: 'Blood Pressure Monitor',
-      brand: 'Omron',
       model: 'HEM-7120',
-      available: 24,
-      category: 'Diagnostic',
-      price: 2500
+      count: '24'
     },
     {
-      id: 2,
       name: 'Glucose Meter',
-      brand: 'Accu-Check',
       model: 'Active',
-      available: 15,
-      category: 'Diagnostic',
-      price: 1800
+      count: '15'
     },
     {
-      id: 3,
       name: 'Nebulizer',
-      brand: 'Philips',
       model: 'InnoSpire Essence',
-      available: 8,
-      category: 'Respiratory',
-      price: 3500
+      count: '8'
     },
     {
-      id: 4,
       name: 'Digital Thermometer',
-      brand: 'Microlife',
       model: 'MT500',
-      available: 32,
-      category: 'Diagnostic',
-      price: 850
+      count: '32'
     },
     {
-      id: 5,
       name: 'Pulse Oximeter',
-      brand: 'Beurer',
       model: 'PO30',
-      available: 18,
-      category: 'Diagnostic',
-      price: 1200
+      count: '18'
     }
   ];
 
@@ -101,16 +147,9 @@ const EquipmentStock = ({ onBack }) => {
       {/* Header */}
       <header className="equipment-stock-header">
         <div className="header-left">
-          <div className="search-container">
-            <input
-              type="text"
-              placeholder="Search for anything here..."
-              value={searchQuery}
-              onChange={handleSearch}
-              className="search-input"
-            />
-            <button className="search-btn">🔍</button>
-          </div>
+          <button className="back-to-dashboard-btn" onClick={onBack}>
+            ← Back to Dashboard
+          </button>
         </div>
         <div className="header-right">
           <div className="language-selector">
@@ -131,9 +170,6 @@ const EquipmentStock = ({ onBack }) => {
       <div className="equipment-stock-content">
         <div className="content-header">
           <div className="breadcrumb-section">
-            <button className="back-btn" onClick={onBack}>
-              ← Back to Dashboard
-            </button>
             <div className="page-title">
               <h1>Inventory › Equipment Stock ({equipmentStock.length})</h1>
               <p>List of medical equipment and devices.</p>
@@ -179,42 +215,198 @@ const EquipmentStock = ({ onBack }) => {
             <thead>
               <tr>
                 <th>Equipment Name ↕</th>
-                <th>Brand ↕</th>
                 <th>Model ↕</th>
-                <th>Available ↕</th>
-                <th>Category ↕</th>
-                <th>Price (Rs) ↕</th>
-                <th>Actions</th>
+                <th>No of Equipments ↕</th>
               </tr>
             </thead>
             <tbody>
-              {equipmentStock.map((equipment) => (
-                <tr key={equipment.id}>
+              {equipmentStock.map((equipment, index) => (
+                <tr 
+                  key={index} 
+                  onClick={() => handleRowClick(equipment)}
+                  className="clickable-row"
+                >
                   <td>{equipment.name}</td>
-                  <td>{equipment.brand}</td>
                   <td>{equipment.model}</td>
-                  <td className={equipment.available < 10 ? 'low-stock' : ''}>{equipment.available}</td>
-                  <td>{equipment.category}</td>
-                  <td>{equipment.price.toLocaleString()}</td>
-                  <td className="action-buttons">
-                    <button 
-                      className="view-detail-btn"
-                      onClick={() => handleViewFullDetail(equipment.name)}
-                    >
-                      View Details
-                    </button>
-                    <button
-                      className="update-stock-btn"
-                      onClick={() => handleUpdateStock(equipment.name)}
-                    >
-                      Update Stock
-                    </button>
-                  </td>
+                  <td>{equipment.count}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+
+        {/* Add New Equipment Form Modal */}
+        {showAddForm && (
+          <div className="modal-overlay">
+            <div className="add-equipment-modal">
+              <div className="modal-header">
+                <h2>
+                  <FiPlusCircle className="header-icon" />
+                  Add New Equipment
+                </h2>
+                <button className="close-btn" onClick={() => setShowAddForm(false)}>
+                  <FiX />
+                </button>
+              </div>
+              
+              <form onSubmit={handleSubmit} className="equipment-form">
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label>
+                      <FiPackage className="label-icon" />
+                      Equipment Name
+                    </label>
+                    <input
+                      type="text"
+                      name="name"
+                      placeholder="Enter equipment name"
+                      value={newEquipment.name}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>
+                      <FiPackage className="label-icon" />
+                      Model
+                    </label>
+                    <input
+                      type="text"
+                      name="model"
+                      placeholder="Enter model number"
+                      value={newEquipment.model}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>
+                      <FiHash className="label-icon" />
+                      No of Equipments
+                    </label>
+                    <input
+                      type="number"
+                      name="count"
+                      placeholder="Enter number of equipments"
+                      min="0"
+                      value={newEquipment.count}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-actions">
+                  <button type="button" className="cancel-btn" onClick={() => setShowAddForm(false)}>
+                    <FiX /> Cancel
+                  </button>
+                  <button type="submit" className="submit-btn">
+                    <FiCheckCircle /> Add Equipment
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Update Equipment Modal */}
+        {showUpdateModal && (
+          <div className="modal-overlay">
+            <div className="add-equipment-modal">
+              <div className="modal-header">
+                <h2>
+                  <FiCheckCircle className="header-icon" />
+                  Update Equipment
+                </h2>
+                <button className="close-btn" onClick={() => setShowUpdateModal(false)}>
+                  <FiX />
+                </button>
+              </div>
+              
+              <form onSubmit={handleUpdateEquipment} className="equipment-form">
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label>
+                      <FiPackage className="label-icon" />
+                      Equipment Name
+                    </label>
+                    <input
+                      type="text"
+                      name="name"
+                      placeholder="Enter equipment name"
+                      value={updateFormData.name}
+                      onChange={handleUpdateInputChange}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>
+                      <FiPackage className="label-icon" />
+                      Model
+                    </label>
+                    <input
+                      type="text"
+                      name="model"
+                      placeholder="Enter model number"
+                      value={updateFormData.model}
+                      onChange={handleUpdateInputChange}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>
+                      <FiHash className="label-icon" />
+                      No of Equipments
+                    </label>
+                    <input
+                      type="number"
+                      name="count"
+                      placeholder="Enter number of equipments"
+                      min="0"
+                      value={updateFormData.count}
+                      onChange={handleUpdateInputChange}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-actions">
+                  <button type="button" className="cancel-btn" onClick={() => setShowUpdateModal(false)}>
+                    <FiX /> Cancel
+                  </button>
+                  <button type="submit" className="submit-btn">
+                    <FiCheckCircle /> Update Equipment
+                  </button>
+                  <button type="button" className="delete-btn" onClick={() => setShowDeleteConfirm(true)}>
+                    <FiX /> Delete Equipment
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="modal-overlay">
+            <div className="delete-confirm-modal">
+              <h3>Confirm Delete</h3>
+              <p>Are you sure you want to delete this equipment record?</p>
+              <div className="button-group">
+                <button className="cancel-btn" onClick={() => setShowDeleteConfirm(false)}>
+                  Cancel
+                </button>
+                <button className="delete-btn" onClick={handleDeleteEquipment}>
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         
         <div className="equipment-summary">
           <div className="summary-item">
@@ -223,11 +415,7 @@ const EquipmentStock = ({ onBack }) => {
           </div>
           <div className="summary-item">
             <span className="summary-label">Total Units Available:</span>
-            <span className="summary-value">{equipmentStock.reduce((sum, item) => sum + item.available, 0)}</span>
-          </div>
-          <div className="summary-item">
-            <span className="summary-label">Items Low in Stock:</span>
-            <span className="summary-value warning">{equipmentStock.filter(item => item.available < 10).length}</span>
+            <span className="summary-value">{equipmentStock.reduce((sum, item) => sum + parseInt(item.count), 0)}</span>
           </div>
         </div>
       </div>

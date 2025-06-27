@@ -1,33 +1,31 @@
-import React, { useState } from 'react'
+import React from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Login from './components/Login/Login'
 import Dashboard from './components/Dashboard/Dashboard'
+import CreateAccount from './components/Auth/CreateAccount'
 import './App.css'
 
 function App() {
-  const [currentPage, setCurrentPage] = useState('login') // 'login' or 'dashboard'
-
   const handleLogin = (credentials) => {
     // Hardcoded login validation
     if (credentials.email === 'admin@crystalpharmacy.com' && credentials.password === 'admin123') {
-      setCurrentPage('dashboard');
       return true;
     }
     return false;
   };
 
-  const handleLogout = () => {
-    setCurrentPage('login');
-  };
-
   return (
-    <div className="App">
-      {currentPage === 'login' ? (
-        <Login onLogin={handleLogin} />
-      ) : (
-        <Dashboard onLogout={handleLogout} />
-      )}
-    </div>
-  )
+    <Router>
+      <div className="App">
+        <Routes>
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/login" element={<Login onLogin={handleLogin} />} />
+          <Route path="/signup" element={<CreateAccount />} />
+          <Route path="/dashboard/*" element={<Dashboard />} />
+        </Routes>
+      </div>
+    </Router>
+  );
 }
 
-export default App
+export default App;

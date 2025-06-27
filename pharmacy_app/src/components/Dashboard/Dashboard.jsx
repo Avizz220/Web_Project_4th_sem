@@ -229,7 +229,7 @@ const Dashboard = ({ onLogout }) => {
               onClick={() => toggleDropdown('contact')}
             >
               <span className="nav-icon">👥</span>
-              <span className="nav-text">Contact Management</span>
+              <span className="nav-text">Contacts</span>
               <span className={`nav-arrow ${openDropdowns.contact ? 'rotated' : ''}`}>▶</span>
             </div>
             {openDropdowns.contact && (
