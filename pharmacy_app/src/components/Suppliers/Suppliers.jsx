@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Suppliers.css';
-import { FiSearch, FiUsers, FiPackage, FiPlus, FiX } from 'react-icons/fi';
+import { FiSearch, FiUsers, FiPackage, FiPlus, FiX, FiEdit, FiTrash2 } from 'react-icons/fi';
 import { HiChevronLeft, HiChevronRight } from 'react-icons/hi';
 import { BsArrowUp, BsArrowDown, BsSun, BsMoon, BsCloud } from 'react-icons/bs';
 
@@ -12,6 +12,13 @@ const Suppliers = ({ onBack }) => {
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  
+  // Dropdown state
+  const [dropdownPosition, setDropdownPosition] = useState({ visible: false, x: 0, y: 0 });
+  const [activeRowId, setActiveRowId] = useState(null);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -64,11 +71,22 @@ const Suppliers = ({ onBack }) => {
   };
 
   const handleAddNewSupplier = () => {
+    setIsEditMode(false);
+    setSelectedSupplier(null);
+    setFormData({
+      name: '',
+      company: '',
+      email: '',
+      phone: '',
+      supplyType: 'Medicine'
+    });
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
+    setIsEditMode(false);
+    setSelectedSupplier(null);
     // Reset form data and errors when closing modal
     setFormData({
       name: '',
@@ -91,6 +109,8 @@ const Suppliers = ({ onBack }) => {
 
   const handleModalClose = () => {
     setIsModalOpen(false);
+    setIsEditMode(false);
+    setSelectedSupplier(null);
     setFormData({
       name: '',
       company: '',
@@ -103,6 +123,37 @@ const Suppliers = ({ onBack }) => {
       notes: ''
     });
     setFormErrors({});
+  };
+  
+  const handleUpdateSupplier = (supplier) => {
+    setIsEditMode(true);
+    setSelectedSupplier(supplier);
+    setFormData({
+      name: supplier.name,
+      company: supplier.company,
+      email: supplier.email,
+      phone: supplier.phone,
+      supplyType: supplier.supplyType
+    });
+    setIsModalOpen(true);
+  };
+  
+  const handleDeleteClick = (supplier) => {
+    setSelectedSupplier(supplier);
+    setIsDeleteModalOpen(true);
+  };
+  
+  const handleConfirmDelete = () => {
+    // In a real application, you would call an API to delete the supplier
+    // For now, we'll just simulate the deletion
+    console.log(`Deleting supplier: ${selectedSupplier.id}`);
+    setIsDeleteModalOpen(false);
+    setSelectedSupplier(null);
+  };
+  
+  const handleCancelDelete = () => {
+    setIsDeleteModalOpen(false);
+    setSelectedSupplier(null);
   };
 
   const handleInputChange = (e) => {
@@ -160,13 +211,16 @@ const Suppliers = ({ onBack }) => {
       
       // Simulate API call
       setTimeout(() => {
-        console.log("New supplier data:", formData);
+        if (isEditMode) {
+          console.log("Updated supplier data:", formData);
+          alert(`Supplier ${formData.name} updated successfully!`);
+        } else {
+          console.log("New supplier data:", formData);
+          alert(`Supplier ${formData.name} added successfully!`);
+        }
+        
         setIsSubmitting(false);
         handleCloseModal();
-        
-        // Here you would typically update the suppliers array with the new data
-        // For now, let's just show an alert
-        alert(`Supplier ${formData.name} added successfully!`);
       }, 1000);
     }
   };
@@ -280,21 +334,56 @@ const Suppliers = ({ onBack }) => {
       break;
   }
 
+  const handleRowClick = (supplier, e) => {
+    e.preventDefault();
+    setSelectedSupplier(supplier);
+    
+    // Toggle dropdown if clicking on the same row
+    if (activeRowId === supplier.id) {
+      setDropdownPosition({ visible: false, x: 0, y: 0 });
+      setActiveRowId(null);
+      return;
+    }
+    
+    setActiveRowId(supplier.id);
+    
+    // Calculate position for dropdown
+    const rect = e.currentTarget.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    setDropdownPosition({
+      visible: true,
+      x: centerX,
+      y: rect.bottom + window.scrollY + 10 // Add a small gap between row and dropdown
+    });
+  };
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (dropdownPosition.visible) {
+      const handleOutsideClick = (e) => {
+        // Don't close if clicking on the dropdown itself
+        if (e.target.closest('.row-dropdown-menu')) {
+          return;
+        }
+        setDropdownPosition({ visible: false, x: 0, y: 0 });
+        setActiveRowId(null);
+      };
+      
+      document.addEventListener('click', handleOutsideClick);
+      return () => {
+        document.removeEventListener('click', handleOutsideClick);
+      };
+    }
+  }, [dropdownPosition.visible]);
+
   return (
     <div className="suppliers-container">
       {/* Header */}
       <header className="suppliers-header">
         <div className="header-left">
-          <div className="search-container">
-            <input
-              type="text"
-              placeholder="Search for anything here..."
-              value={searchQuery}
-              onChange={handleSearch}
-              className="search-input"
-            />
-            <button className="search-btn"><FiSearch /></button>
-          </div>
+          <button className="header-back-btn" onClick={onBack}>
+            <HiChevronLeft /> Back to Dashboard
+          </button>
         </div>
         <div className="header-right">
           <div className="language-selector">
@@ -315,9 +404,6 @@ const Suppliers = ({ onBack }) => {
       <div className="suppliers-content">
         <div className="content-header">
           <div className="breadcrumb-section">
-            <button className="back-btn" onClick={onBack}>
-              <HiChevronLeft /> Back to Dashboard
-            </button>
             <div className="page-title">
               <h1>Supplier Management 📦</h1>
               <p>Here are your supplier statistics and data</p>
@@ -427,7 +513,11 @@ const Suppliers = ({ onBack }) => {
               <tbody>
                 {sortedSuppliers.length > 0 ? (
                   sortedSuppliers.map(supplier => (
-                    <tr key={supplier.id}>
+                    <tr 
+                      key={supplier.id} 
+                      onClick={(e) => handleRowClick(supplier, e)}
+                      className={activeRowId === supplier.id ? 'active' : ''}
+                    >
                       <td>{supplier.name}</td>
                       <td>{supplier.company}</td>
                       <td>{supplier.email}</td>
@@ -477,7 +567,7 @@ const Suppliers = ({ onBack }) => {
         <div className="modal-overlay">
           <div className="supplier-modal">
             <div className="modal-header">
-              <h2>Add New Supplier</h2>
+              <h2>{isEditMode ? 'Edit Supplier' : 'Add New Supplier'}</h2>
               <button className="close-modal-btn" onClick={handleCloseModal}>
                 <FiX />
               </button>
@@ -579,11 +669,76 @@ const Suppliers = ({ onBack }) => {
                   Cancel
                 </button>
                 <button type="submit" className="submit-btn" disabled={isSubmitting}>
-                  {isSubmitting ? 'Adding...' : 'Add Supplier'}
+                  {isSubmitting 
+                    ? (isEditMode ? 'Updating... ⏳' : 'Adding... ⏳') 
+                    : (isEditMode ? 'Update Supplier' : 'Add Supplier')
+                  }
                 </button>
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div className="modal-overlay">
+          <div className="delete-modal">
+            <div className="delete-modal-header">
+              <h2>Confirm Deletion</h2>
+              <button className="close-modal-btn" onClick={handleCancelDelete}>
+                <FiX />
+              </button>
+            </div>
+            <div className="delete-modal-content">
+              <div className="delete-icon">
+                <FiTrash2 />
+              </div>
+              <p>Are you sure you want to delete the supplier <strong>{selectedSupplier?.name}</strong>?</p>
+              <p className="delete-warning">This action cannot be undone.</p>
+            </div>
+            <div className="delete-modal-actions">
+              <button className="cancel-btn" onClick={handleCancelDelete}>
+                Cancel
+              </button>
+              <button className="delete-confirm-btn" onClick={handleConfirmDelete}>
+                Delete Supplier
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Row Action Dropdown */}
+      {dropdownPosition.visible && (
+        <div 
+          className="row-dropdown-menu"
+          style={{ 
+            position: 'fixed', 
+            top: `${dropdownPosition.y}px`, 
+            left: `${dropdownPosition.x}px`,
+            transform: 'translateX(-50%)'
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button 
+            className="dropdown-item edit-item"
+            onClick={() => {
+              handleUpdateSupplier(selectedSupplier);
+              setDropdownPosition({ visible: false, x: 0, y: 0 });
+            }}
+          >
+            <FiEdit size={18} /> Update Supplier
+          </button>
+          <button 
+            className="dropdown-item delete-item"
+            onClick={() => {
+              handleDeleteClick(selectedSupplier);
+              setDropdownPosition({ visible: false, x: 0, y: 0 });
+            }}
+          >
+            <FiTrash2 size={18} /> Delete Supplier
+          </button>
         </div>
       )}
     </div>

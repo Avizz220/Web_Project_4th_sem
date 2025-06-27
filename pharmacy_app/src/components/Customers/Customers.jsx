@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Customers.css';
-import { FiSearch, FiUsers, FiUserCheck, FiPlus, FiX } from 'react-icons/fi';
+import { FiSearch, FiUsers, FiUserCheck, FiPlus, FiX, FiEdit, FiTrash2 } from 'react-icons/fi';
 import { HiChevronLeft, HiChevronRight } from 'react-icons/hi';
 import { BsArrowUp, BsArrowDown, BsSun, BsMoon, BsCloud } from 'react-icons/bs';
 
@@ -12,6 +12,13 @@ const Customers = ({ onBack }) => {
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  
+  // Dropdown state
+  const [dropdownPosition, setDropdownPosition] = useState({ visible: false, x: 0, y: 0 });
+  const [activeRowId, setActiveRowId] = useState(null);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -64,11 +71,22 @@ const Customers = ({ onBack }) => {
   };
 
   const handleAddNewCustomer = () => {
+    setIsEditMode(false);
+    setSelectedCustomer(null);
+    setFormData({
+      name: '',
+      phone: '',
+      email: '',
+      gender: 'Male',
+      lastTransaction: new Date().toISOString().split('T')[0]
+    });
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
+    setIsEditMode(false);
+    setSelectedCustomer(null);
     // Reset form data and errors when closing modal
     setFormData({
       name: '',
@@ -79,6 +97,37 @@ const Customers = ({ onBack }) => {
     });
     setFormErrors({});
     setIsSubmitting(false);
+  };
+  
+  const handleUpdateCustomer = (customer) => {
+    setIsEditMode(true);
+    setSelectedCustomer(customer);
+    setFormData({
+      name: customer.name,
+      phone: customer.phone,
+      email: customer.email,
+      gender: customer.gender,
+      lastTransaction: new Date(customer.lastTransaction).toISOString().split('T')[0]
+    });
+    setIsModalOpen(true);
+  };
+  
+  const handleDeleteClick = (customer) => {
+    setSelectedCustomer(customer);
+    setIsDeleteModalOpen(true);
+  };
+  
+  const handleConfirmDelete = () => {
+    // In a real application, you would call an API to delete the customer
+    // For now, we'll just simulate the deletion
+    console.log(`Deleting customer: ${selectedCustomer.id}`);
+    setIsDeleteModalOpen(false);
+    setSelectedCustomer(null);
+  };
+  
+  const handleCancelDelete = () => {
+    setIsDeleteModalOpen(false);
+    setSelectedCustomer(null);
   };
 
   const handleInputChange = (e) => {
@@ -135,13 +184,16 @@ const Customers = ({ onBack }) => {
       
       // Simulate API call
       setTimeout(() => {
-        console.log("New customer data:", formData);
+        if (isEditMode) {
+          console.log("Updated customer data:", formData);
+          alert(`Customer ${formData.name} updated successfully!`);
+        } else {
+          console.log("New customer data:", formData);
+          alert(`Customer ${formData.name} added successfully!`);
+        }
+        
         setIsSubmitting(false);
         handleCloseModal();
-        
-        // Here you would typically update the customers array with the new data
-        // For now, let's just show an alert
-        alert(`Customer ${formData.name} added successfully!`);
       }, 1000);
     }
   };
@@ -153,6 +205,48 @@ const Customers = ({ onBack }) => {
   const handleSortChange = (e) => {
     setSortOption(e.target.value);
   };
+
+  const handleRowClick = (customer, e) => {
+    e.preventDefault();
+    setSelectedCustomer(customer);
+    
+    // Toggle dropdown if clicking on the same row
+    if (activeRowId === customer.id) {
+      setDropdownPosition({ visible: false, x: 0, y: 0 });
+      setActiveRowId(null);
+      return;
+    }
+    
+    setActiveRowId(customer.id);
+    
+    // Calculate position for dropdown
+    const rect = e.currentTarget.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    setDropdownPosition({
+      visible: true,
+      x: centerX,
+      y: rect.bottom + window.scrollY + 10 // Add a small gap between row and dropdown
+    });
+  };
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (dropdownPosition.visible) {
+      const handleOutsideClick = (e) => {
+        // Don't close if clicking on the dropdown itself
+        if (e.target.closest('.row-dropdown-menu')) {
+          return;
+        }
+        setDropdownPosition({ visible: false, x: 0, y: 0 });
+        setActiveRowId(null);
+      };
+      
+      document.addEventListener('click', handleOutsideClick);
+      return () => {
+        document.removeEventListener('click', handleOutsideClick);
+      };
+    }
+  }, [dropdownPosition.visible]);
 
   // Sample customers data
   const customers = [
@@ -268,16 +362,9 @@ const Customers = ({ onBack }) => {
       {/* Header */}
       <header className="customers-header">
         <div className="header-left">
-          <div className="search-container">
-            <input
-              type="text"
-              placeholder="Search for anything here..."
-              value={searchQuery}
-              onChange={handleSearch}
-              className="search-input"
-            />
-            <button className="search-btn"><FiSearch /></button>
-          </div>
+          <button className="header-back-btn" onClick={onBack}>
+            <HiChevronLeft /> Back to Dashboard
+          </button>
         </div>
         <div className="header-right">
           <div className="language-selector">
@@ -298,11 +385,8 @@ const Customers = ({ onBack }) => {
       <div className="customers-content">
         <div className="content-header">
           <div className="breadcrumb-section">
-            <button className="back-btn" onClick={onBack}>
-              <HiChevronLeft /> Back to Dashboard
-            </button>
             <div className="page-title">
-              <h1>Hello Evano 👋</h1>
+              <h1>Customer Management 👥</h1>
               <p>Here are your customer statistics and data</p>
             </div>
           </div>
@@ -355,13 +439,13 @@ const Customers = ({ onBack }) => {
                 className={`tab-btn ${activeTab === 'active' ? 'active' : ''}`}
                 onClick={() => handleTabChange('active')}
               >
-                Male
+                Male Customers
               </button>
               <button 
                 className={`tab-btn ${activeTab === 'inactive' ? 'active' : ''}`}
                 onClick={() => handleTabChange('inactive')}
               >
-                Female
+                Female Customers
               </button>
             </div>
           </div>
@@ -410,7 +494,11 @@ const Customers = ({ onBack }) => {
               <tbody>
                 {sortedCustomers.length > 0 ? (
                   sortedCustomers.map(customer => (
-                    <tr key={customer.id}>
+                    <tr 
+                      key={customer.id} 
+                      onClick={(e) => handleRowClick(customer, e)}
+                      className={activeRowId === customer.id ? 'active' : ''}
+                    >
                       <td>{customer.name}</td>
                       <td>{customer.phone}</td>
                       <td>{customer.email}</td>
@@ -464,18 +552,13 @@ const Customers = ({ onBack }) => {
         <div className="modal-overlay">
           <div className="customer-modal">
             <div className="modal-header">
-              <h2>Add New Customer</h2>
+              <h2>{isEditMode ? 'Edit Customer' : 'Add New Customer'}</h2>
               <button className="close-modal-btn" onClick={handleCloseModal}>
                 <FiX />
               </button>
             </div>
             
             <form onSubmit={handleSubmit} className="customer-form">
-              <div className="form-header">
-                <span className="form-icon">👤</span>
-                <h3>Enter Customer Information</h3>
-              </div>
-              
               <div className="form-content">
                 <div className="form-group">
                   <label htmlFor="name">Customer Name <span className="required-mark">*</span></label>
@@ -572,11 +655,76 @@ const Customers = ({ onBack }) => {
                   Cancel
                 </button>
                 <button type="submit" className="submit-btn" disabled={isSubmitting}>
-                  {isSubmitting ? 'Adding...' : 'Add Customer'}
+                  {isSubmitting 
+                    ? (isEditMode ? 'Updating... ⏳' : 'Adding... ⏳') 
+                    : (isEditMode ? 'Update Customer' : 'Add Customer')
+                  }
                 </button>
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div className="modal-overlay">
+          <div className="delete-modal">
+            <div className="delete-modal-header">
+              <h2>Confirm Deletion</h2>
+              <button className="close-modal-btn" onClick={handleCancelDelete}>
+                <FiX />
+              </button>
+            </div>
+            <div className="delete-modal-content">
+              <div className="delete-icon">
+                <FiTrash2 />
+              </div>
+              <p>Are you sure you want to delete the customer <strong>{selectedCustomer?.name}</strong>?</p>
+              <p className="delete-warning">This action cannot be undone.</p>
+            </div>
+            <div className="delete-modal-actions">
+              <button className="cancel-btn" onClick={handleCancelDelete}>
+                Cancel
+              </button>
+              <button className="delete-confirm-btn" onClick={handleConfirmDelete}>
+                Delete Customer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Row Action Dropdown */}
+      {dropdownPosition.visible && (
+        <div 
+          className="row-dropdown-menu"
+          style={{ 
+            position: 'fixed', 
+            top: `${dropdownPosition.y}px`, 
+            left: `${dropdownPosition.x}px`,
+            transform: 'translateX(-50%)'
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button 
+            className="dropdown-item edit-item"
+            onClick={() => {
+              handleUpdateCustomer(selectedCustomer);
+              setDropdownPosition({ visible: false, x: 0, y: 0 });
+            }}
+          >
+            <FiEdit size={18} /> Update Customer
+          </button>
+          <button 
+            className="dropdown-item delete-item"
+            onClick={() => {
+              handleDeleteClick(selectedCustomer);
+              setDropdownPosition({ visible: false, x: 0, y: 0 });
+            }}
+          >
+            <FiTrash2 size={18} /> Delete Customer
+          </button>
         </div>
       )}
     </div>
