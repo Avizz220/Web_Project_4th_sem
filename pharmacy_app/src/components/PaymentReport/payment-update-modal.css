@@ -109,13 +109,24 @@
 }
 
 .payment-update-form .delete-btn {
-  background-color: #fef2f2;
-  color: #ef4444;
-  border: 1px solid #fee2e2;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #ffffff !important;
+  border: none;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.2;
 }
 
 .payment-update-form .delete-btn:hover {
-  background-color: #fee2e2;
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  text-align: center;
 }
 
 .payment-update-form .update-btn {

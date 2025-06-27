@@ -8,6 +8,7 @@ import Profile from '../Profile/Profile';
 import EquipmentStock from '../EquipmentStock/EquipmentStock';
 import Customers from '../Customers/Customers';
 import Suppliers from '../Suppliers/Suppliers';
+import AboutUs from '../AboutUs/AboutUs';
 import { FiLogOut, FiUser } from 'react-icons/fi';
 
 const Dashboard = ({ onLogout }) => {
@@ -65,6 +66,11 @@ const Dashboard = ({ onLogout }) => {
   
   const navigateToSuppliers = () => {
     setCurrentView('suppliers');
+    setOpenDropdowns({}); // Close all dropdowns
+  };
+
+  const navigateToAboutUs = () => {
+    setCurrentView('about-us');
     setOpenDropdowns({}); // Close all dropdowns
   };
 
@@ -156,9 +162,9 @@ const Dashboard = ({ onLogout }) => {
     return <Suppliers onBack={navigateToDashboard} />;
   }
 
-  // Render Suppliers component if current view is suppliers
-  if (currentView === 'suppliers') {
-    return <Suppliers onBack={navigateToDashboard} />;
+  // Render About Us component if current view is about-us
+  if (currentView === 'about-us') {
+    return <AboutUs onBack={navigateToDashboard} />;
   }
 
   return (
@@ -199,7 +205,8 @@ const Dashboard = ({ onLogout }) => {
               <span className="nav-icon">📦</span>
               <span className="nav-text">Inventory</span>
               <span className={`nav-arrow ${openDropdowns.inventory ? 'rotated' : ''}`}>▶</span>
-            </div>            {openDropdowns.inventory && (
+            </div>
+            {openDropdowns.inventory && (
               <div className="dropdown-menu">
                 <div className="dropdown-item" onClick={navigateToMedicineGroups}>
                   <span className="dropdown-icon">💊</span>
@@ -212,7 +219,8 @@ const Dashboard = ({ onLogout }) => {
               </div>
             )}
           </div>
-            <div className="nav-item-container">
+
+          <div className="nav-item-container">
             <div 
               className={`nav-item ${openDropdowns.reports ? 'expanded' : ''}`}
               onClick={() => toggleDropdown('reports')}
@@ -228,14 +236,12 @@ const Dashboard = ({ onLogout }) => {
                   <span className="dropdown-text">Payment Report</span>
                 </div>
                 <div className="dropdown-item" onClick={navigateToSalesReport}>
-                  <span className="dropdown-icon">�</span>
+                  <span className="dropdown-icon">📊</span>
                   <span className="dropdown-text">Sales Report</span>
                 </div>
               </div>
             )}
           </div>
-          
-         
           
           <div className="nav-item-container">
             <div 
@@ -259,14 +265,16 @@ const Dashboard = ({ onLogout }) => {
               </div>
             )}
           </div>
-            
-         
+
           <div className="nav-item" onClick={navigateToProfile}>
             <span className="nav-icon">🛠️</span>
             <span className="nav-text">Profile Settings</span>
           </div>
-         
-          
+
+          <div className="nav-item" onClick={navigateToAboutUs}>
+            <span className="nav-icon">ℹ️</span>
+            <span className="nav-text">About Us</span>
+          </div>
         </nav>
 
         <div className="sidebar-footer">

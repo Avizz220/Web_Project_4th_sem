@@ -58,7 +58,7 @@
   align-items: center;
   gap: 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  transition: background 0.3s ease;
+  transition: backgroundcolor 0.3s ease;
 }
 
 .user-profile:hover {
@@ -116,26 +116,43 @@
 .sidebar-nav {
   flex: 1;
   padding: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 0;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.875rem 1.5rem;
+  padding: 0.75rem 1.5rem;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+  margin: 0.1rem 0;
+  font-size: 0.875rem;
+}
   cursor: pointer;
   transition: all 0.3s ease;
   position: relative;
+  border-radius: 0 25px 25px 0;
+  margin: 0.1rem 0;
+  margin-right: 1rem;
 }
 
 .nav-item:hover {
   background: rgba(255, 255, 255, 0.08);
   transform: translateX(4px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .nav-item.active {
   background: linear-gradient(135deg, rgba(14, 165, 233, 0.2), rgba(59, 130, 246, 0.2));
   border-right: 3px solid #0ea5e9;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
 }
 
 .nav-item.active::before {
@@ -146,10 +163,16 @@
   bottom: 0;
   width: 4px;
   background: linear-gradient(180deg, #0ea5e9, #3b82f6);
+  border-radius: 0 2px 2px 0;
 }
 
 .nav-item-container {
   position: relative;
+  margin-bottom: 0.25rem;
+}
+
+.nav-item-container:last-of-type {
+  margin-bottom: 0.25rem;
 }
 
 .nav-item.expanded {
@@ -347,6 +370,8 @@
   font-size: 0.75rem;
   color: #94a3b8;
   text-align: center;
+  margin-top: auto; /* Push footer to bottom */
+  background: rgba(0, 0, 0, 0.1);
 }
 
 /* Main Content */
@@ -551,8 +576,8 @@
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .stat-card {
@@ -639,12 +664,12 @@
 .section-left, .section-right {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .inventory-section, .pharmacy-section, .quick-report-section, .customers-section {
   background: white;
-  padding: 1.5rem;
+  padding: 1rem;
   border-radius: 1rem;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
   border: 1px solid #e2e8f0;
@@ -659,13 +684,13 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
   border-bottom: 1px solid #e2e8f0;
 }
 
 .section-header h2 {
-  font-size: 1.25rem;
+  font-size: 1rem;
   font-weight: 700;
   color: #1e293b;
 }
@@ -693,7 +718,7 @@
 
 .inventory-item, .pharmacy-item, .report-item, .customers-item {
   text-align: center;
-  padding: 1rem;
+  padding: 0.75rem;
   border-radius: 0.5rem;
   background: linear-gradient(135deg, #f8fafc, #f1f5f9);
   transition: all 0.3s ease;
@@ -705,15 +730,15 @@
 }
 
 .inventory-item h3, .pharmacy-item h3, .report-item h3, .customers-item h3 {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: #1e293b;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
 }
 
 .inventory-item p, .pharmacy-item p, .report-item p, .customers-item p {
   color: #64748b;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
 }
 
 .customers-item.featured {
