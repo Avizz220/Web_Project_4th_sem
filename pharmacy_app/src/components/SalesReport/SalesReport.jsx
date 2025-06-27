@@ -39,8 +39,6 @@ const SalesReport = ({ onBack }) => {
     status: 'Completed'
   });
 
-  // State for update modal
-  const [showUpdateModal, setShowUpdateModal] = useState(false);
   // State for delete confirmation modal
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -358,9 +356,21 @@ const SalesReport = ({ onBack }) => {
 
   // Handle delete action
   const handleDelete = () => {
+    setShowActionPopup(false);
+    setShowDeleteConfirm(true);
+  };
+
+  // Confirm delete action
+  const confirmDelete = () => {
     console.log('Deleting sale:', selectedSale);
-    // Implement delete logic here
-    closePopup();
+    
+    // Here you would typically call an API to delete the sale
+    // For now, we'll just simulate it with a success message
+    alert(`Sale ${selectedSale.id} has been deleted successfully!`);
+    
+    // Close modals and reset state
+    setShowDeleteConfirm(false);
+    setSelectedSale(null);
   };
 
   // Handle clicks outside the popup to close it
@@ -481,7 +491,7 @@ const SalesReport = ({ onBack }) => {
               {currentItems.map((sale) => (
                 <tr 
                   key={sale.id}
-                  onClick={() => handleRowClick(sale)}
+                  onClick={(event) => handleRowClick(sale, event)}
                   className="clickable-row"
                 >
                   <td>{sale.id}</td>
@@ -809,100 +819,159 @@ const SalesReport = ({ onBack }) => {
           </div>
         )}
 
-        {/* Update Modal */}
-        {showUpdateModal && (
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && selectedSale && (
           <div className="modal-overlay">
-            <div className="modal-content">
+            <div className="delete-confirm-modal">
               <div className="modal-header">
-                <h2>Update Sale</h2>
-                <button className="close-btn" onClick={() => setShowUpdateModal(false)}>
+                <h3>Confirm Delete</h3>
+                <button className="close-modal-btn" onClick={() => setShowDeleteConfirm(false)}>
                   <FiX />
                 </button>
               </div>
-              <form onSubmit={handleUpdate} className="update-form">
-                <div className="form-group">
-                  <label>Sale ID</label>
-                  <input
-                    type="text"
-                    value={updateFormData.id}
-                    disabled
-                  />
+              <div className="delete-content">
+                <p>Are you sure you want to delete this sale record?</p>
+                <div className="sale-details">
+                  <strong>Sale ID:</strong> {selectedSale.id}<br />
+                  <strong>Customer:</strong> {selectedSale.customer}<br />
+                  <strong>Amount:</strong> {selectedSale.amount}
                 </div>
-                <div className="form-group">
-                  <label>Sale Type</label>
-                  <select
-                    value={updateFormData.type}
-                    onChange={(e) => setUpdateFormData({...updateFormData, type: e.target.value})}
-                  >
-                    <option value="Medicine">Medicine</option>
-                    <option value="Equipment">Equipment</option>
-                    <option value="Healthcare">Healthcare</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Date</label>
-                  <input
-                    type="date"
-                    value={updateFormData.date}
-                    onChange={(e) => setUpdateFormData({...updateFormData, date: e.target.value})}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Customer</label>
-                  <input
-                    type="text"
-                    value={updateFormData.customer}
-                    onChange={(e) => setUpdateFormData({...updateFormData, customer: e.target.value})}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Amount</label>
-                  <input
-                    type="text"
-                    value={updateFormData.amount}
-                    onChange={(e) => setUpdateFormData({...updateFormData, amount: e.target.value})}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Status</label>
-                  <select
-                    value={updateFormData.status}
-                    onChange={(e) => setUpdateFormData({...updateFormData, status: e.target.value})}
-                  >
-                    <option value="Completed">Completed</option>
-                    <option value="Pending">Pending</option>
-                  </select>
-                </div>
-                <div className="button-group">
-                  <button type="button" className="cancel-btn" onClick={() => setShowUpdateModal(false)}>
-                    Cancel
-                  </button>
-                  <button type="submit" className="update-btn">
-                    Update Sale
-                  </button>
-                  <button type="button" className="delete-btn" onClick={() => setShowDeleteConfirm(true)}>
-                    Delete Sale
-                  </button>
-                </div>
-              </form>
+                <p className="warning-text">This action cannot be undone.</p>
+              </div>
+              <div className="form-actions">
+                <button className="cancel-btn" onClick={() => setShowDeleteConfirm(false)}>
+                  Cancel
+                </button>
+                <button className="delete-btn" onClick={confirmDelete}>
+                  <FiTrash2 /> Delete Sale
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Delete Confirmation Modal */}
-        {showDeleteConfirm && (
+        {/* Add Sale Modal */}
+        {showAddSaleForm && (
           <div className="modal-overlay">
-            <div className="delete-confirm-modal">
-              <h3>Confirm Delete</h3>
-              <p>Are you sure you want to delete this sale record?</p>
-              <div className="button-group">
-                <button className="cancel-btn" onClick={() => setShowDeleteConfirm(false)}>
-                  Cancel
-                </button>
-                <button className="delete-btn" onClick={handleDelete}>
-                  Delete
+            <div className="sale-update-modal">
+              <div className="modal-header">
+                <h2>Add New Sale</h2>
+                <button className="close-modal-btn" onClick={() => {
+                  setShowAddSaleForm(false);
+                  setFormErrors({});
+                  setNewSaleData({
+                    type: 'Medicine',
+                    date: new Date().toISOString().split('T')[0],
+                    customer: '',
+                    amount: '',
+                    status: 'Completed'
+                  });
+                }}>
+                  <FiX />
                 </button>
               </div>
+              
+              <form onSubmit={handleAddSaleSubmit} className="sale-update-form">
+                <div className="form-content">
+                  <div className="form-group">
+                    <label htmlFor="newCustomer">Customer <span className="required-mark">*</span></label>
+                    <input
+                      type="text"
+                      id="newCustomer"
+                      name="customer"
+                      value={newSaleData.customer}
+                      onChange={handleNewSaleChange}
+                      className={formErrors.customer ? 'error' : ''}
+                      placeholder="Enter customer name"
+                    />
+                    {formErrors.customer && <span className="error-message">{formErrors.customer}</span>}
+                  </div>
+                  
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="newType">Sale Type <span className="required-mark">*</span></label>
+                      <select
+                        id="newType"
+                        name="type"
+                        value={newSaleData.type}
+                        onChange={handleNewSaleChange}
+                        className={formErrors.type ? 'error' : ''}
+                      >
+                        <option value="Medicine">Medicine</option>
+                        <option value="Equipment">Equipment</option>
+                        <option value="Healthcare">Healthcare</option>
+                        <option value="Bulk">Bulk</option>
+                      </select>
+                      {formErrors.type && <span className="error-message">{formErrors.type}</span>}
+                    </div>
+                    
+                    <div className="form-group">
+                      <label htmlFor="newStatus">Status <span className="required-mark">*</span></label>
+                      <select
+                        id="newStatus"
+                        name="status"
+                        value={newSaleData.status}
+                        onChange={handleNewSaleChange}
+                        className={formErrors.status ? 'error' : ''}
+                      >
+                        <option value="Completed">Completed</option>
+                        <option value="Pending">Pending</option>
+                      </select>
+                      {formErrors.status && <span className="error-message">{formErrors.status}</span>}
+                    </div>
+                  </div>
+                  
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="newDate">Date <span className="required-mark">*</span></label>
+                      <input
+                        type="date"
+                        id="newDate"
+                        name="date"
+                        value={newSaleData.date}
+                        onChange={handleNewSaleChange}
+                        className={formErrors.date ? 'error' : ''}
+                      />
+                      {formErrors.date && <span className="error-message">{formErrors.date}</span>}
+                    </div>
+                    
+                    <div className="form-group">
+                      <label htmlFor="newAmount">Amount (Rs.) <span className="required-mark">*</span></label>
+                      <input
+                        type="number"
+                        id="newAmount"
+                        name="amount"
+                        value={newSaleData.amount}
+                        onChange={handleNewSaleChange}
+                        className={formErrors.amount ? 'error' : ''}
+                        placeholder="Enter amount"
+                        step="0.01"
+                        min="0"
+                      />
+                      {formErrors.amount && <span className="error-message">{formErrors.amount}</span>}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="form-actions">
+                  <button type="button" className="cancel-btn" onClick={() => {
+                    setShowAddSaleForm(false);
+                    setFormErrors({});
+                    setNewSaleData({
+                      type: 'Medicine',
+                      date: new Date().toISOString().split('T')[0],
+                      customer: '',
+                      amount: '',
+                      status: 'Completed'
+                    });
+                  }}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="submit-btn">
+                    Add Sale
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

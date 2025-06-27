@@ -8,6 +8,7 @@ import Profile from '../Profile/Profile';
 import EquipmentStock from '../EquipmentStock/EquipmentStock';
 import Customers from '../Customers/Customers';
 import Suppliers from '../Suppliers/Suppliers';
+import { FiLogOut, FiUser } from 'react-icons/fi';
 
 const Dashboard = ({ onLogout }) => {
   const [selectedMonth, setSelectedMonth] = useState('January 2022');
@@ -65,6 +66,22 @@ const Dashboard = ({ onLogout }) => {
   const navigateToSuppliers = () => {
     setCurrentView('suppliers');
     setOpenDropdowns({}); // Close all dropdowns
+  };
+
+  // Handle logout functionality
+  const handleLogout = () => {
+    // Confirm logout
+    const confirmLogout = window.confirm('Are you sure you want to logout?');
+    if (confirmLogout) {
+      // Clear any stored user data (if you have localStorage/sessionStorage)
+      localStorage.removeItem('userToken');
+      localStorage.removeItem('userData');
+      
+      // Call the onLogout function passed from parent component
+      if (onLogout) {
+        onLogout();
+      }
+    }
   };
 
   // Get current time-based greeting
@@ -218,10 +235,7 @@ const Dashboard = ({ onLogout }) => {
             )}
           </div>
           
-          <div className="nav-item">
-            <span className="nav-icon">⚙️</span>
-            <span className="nav-text">Configuration</span>
-          </div>
+         
           
           <div className="nav-item-container">
             <div 
@@ -245,27 +259,14 @@ const Dashboard = ({ onLogout }) => {
               </div>
             )}
           </div>
-            <div className="nav-item">
-            <span className="nav-icon">🔔</span>
-            <span className="nav-text">Notifications</span>
-            <span className="notification-badge">5</span>
-          </div>
-          <div className="nav-item">
-            <span className="nav-icon">💬</span>
-            <span className="nav-text">Chat with Visitors</span>
-          </div>
+            
+         
           <div className="nav-item" onClick={navigateToProfile}>
             <span className="nav-icon">🛠️</span>
-            <span className="nav-text">Application Settings</span>
+            <span className="nav-text">Profile Settings</span>
           </div>
-          <div className="nav-item">
-            <span className="nav-icon">🦠</span>
-            <span className="nav-text">Covid-19</span>
-          </div>
-          <div className="nav-item">
-            <span className="nav-icon">❓</span>
-            <span className="nav-text">Get Technical Help</span>
-          </div>
+         
+          
         </nav>
 
         <div className="sidebar-footer">
@@ -302,6 +303,15 @@ const Dashboard = ({ onLogout }) => {
             <div className="date-time">
               {getCurrentDate()}
             </div>
+            <div className="user-actions">
+              <button className="profile-btn" onClick={navigateToProfile} title="Profile">
+                <FiUser />
+              </button>
+              <button className="logout-btn" onClick={handleLogout} title="Logout">
+                <FiLogOut />
+                <span>Logout</span>
+              </button>
+            </div>
           </div>
         </header>
 
@@ -325,7 +335,7 @@ const Dashboard = ({ onLogout }) => {
                 <h3>Good</h3>
                 <p>Inventory Status</p>
               </div>
-              <button className="stat-action">View Detailed Report →</button>
+             {/* ll */}
             </div>
 
             <div className="stat-card revenue">
@@ -334,7 +344,7 @@ const Dashboard = ({ onLogout }) => {
                 <h3>Rs. 8,55,875</h3>
                 <p>Revenue • Jan 2022 ▼</p>
               </div>
-              <button className="stat-action">View Detailed Report →</button>
+              
             </div>
 
             <div className="stat-card medicines">
@@ -343,7 +353,7 @@ const Dashboard = ({ onLogout }) => {
                 <h3>298</h3>
                 <p>Medicines Available</p>
               </div>
-              <button className="stat-action">Visit Inventory →</button>
+
             </div>
 
             <div className="stat-card shortage">
@@ -352,7 +362,7 @@ const Dashboard = ({ onLogout }) => {
                 <h3>01</h3>
                 <p>Medicine Shortage</p>
               </div>
-              <button className="stat-action">Resolve Now →</button>
+             
             </div>
           </div>
 
@@ -362,7 +372,7 @@ const Dashboard = ({ onLogout }) => {
               <div className="inventory-section">
                 <div className="section-header">
                   <h2>Inventory</h2>
-                  <button className="section-action">Go to Configuration →</button>
+                  
                 </div>
                 <div className="inventory-stats">
                   <div className="inventory-item">
@@ -379,7 +389,7 @@ const Dashboard = ({ onLogout }) => {
               <div className="pharmacy-section">
                 <div className="section-header">
                   <h2>My Pharmacy</h2>
-                  <button className="section-action">Go to User Management →</button>
+                 
                 </div>
                 <div className="pharmacy-stats">
                   <div className="pharmacy-item">
@@ -423,7 +433,7 @@ const Dashboard = ({ onLogout }) => {
               <div className="customers-section">
                 <div className="section-header">
                   <h2>Customers</h2>
-                  <button className="section-action">Go to Customers Page →</button>
+                 
                 </div>
                 <div className="customers-stats">
                   <div className="customers-item">

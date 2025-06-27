@@ -65,7 +65,7 @@
 }
 
 .signup-header h1 {
-  color: #1a237e;
+  color: #00b8d4;
   font-size: 2rem;
   margin-bottom: 0.5rem;
 }
@@ -190,8 +190,10 @@ input[type="checkbox"]:checked + .checkbox-custom .check-icon {
   transform: translateY(-1px);
 }
 
+/* OR Divider - Perfect alignment */
 .or-divider {
-  text-align: center;
+  display: flex;
+  align-items: center;
   margin: 1.5rem 0;
   position: relative;
 }
@@ -199,26 +201,19 @@ input[type="checkbox"]:checked + .checkbox-custom .check-icon {
 .or-divider::before,
 .or-divider::after {
   content: '';
-  position: absolute;
-  top: 50%;
-  width: 45%;
+  flex: 1;
   height: 1px;
   background: #e0e0e0;
 }
 
-.or-divider::before {
-  left: 0;
-}
-
-.or-divider::after {
-  right: 0;
-}
-
 .or-divider span {
   background: white;
-  padding: 0 1rem;
+  padding: 0 1.25rem;
   color: #666;
   font-size: 0.9rem;
+  font-weight: 500;
+  position: relative;
+  z-index: 1;
 }
 
 .google-signup-button {

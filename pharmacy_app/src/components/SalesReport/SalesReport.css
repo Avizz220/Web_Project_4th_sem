@@ -703,21 +703,99 @@
 /* Delete Confirmation Modal */
 .delete-confirm-modal {
   background: white;
-  border-radius: 8px;
-  padding: 1.5rem;
+  border-radius: 12px;
+  padding: 0;
   width: 100%;
-  max-width: 400px;
-  text-align: center;
+  max-width: 450px;
+  text-align: left;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+  animation: modalFadeIn 0.3s ease;
 }
 
-.delete-confirm-modal h3 {
+.delete-confirm-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fef2f2;
+  border-radius: 12px 12px 0 0;
+}
+
+.delete-confirm-modal .modal-header h3 {
+  margin: 0;
+  color: #dc2626;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.delete-content {
+  padding: 1.5rem;
+}
+
+.delete-content p {
   margin: 0 0 1rem;
-  color: #1e293b;
+  color: #374151;
+  font-weight: 500;
 }
 
-.delete-confirm-modal p {
-  margin: 0 0 1.5rem;
+.sale-details {
+  background: #f8fafc;
+  padding: 1rem;
+  border-radius: 8px;
+  margin: 1rem 0;
   color: #64748b;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.warning-text {
+  color: #dc2626;
+  font-weight: 500;
+  font-size: 0.9rem;
+  margin-top: 1rem;
+}
+
+.delete-confirm-modal .form-actions {
+  padding: 1.5rem;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 0 0 12px 12px;
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.delete-confirm-modal .cancel-btn,
+.delete-confirm-modal .delete-btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.delete-confirm-modal .cancel-btn {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.delete-confirm-modal .cancel-btn:hover {
+  background: #cbd5e1;
+}
+
+.delete-confirm-modal .delete-btn {
+  background: #dc2626;
+  color: white;
+}
+
+.delete-confirm-modal .delete-btn:hover {
+  background: #b91c1c;
+  transform: translateY(-1px);
 }
 
 @keyframes popup-fade-in {
@@ -1241,4 +1319,96 @@
     width: 100%;
     padding: 1rem;
   }
+}
+
+/* Sale Update/Add Modal */
+.sale-update-modal {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 600px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+  animation: modalFadeIn 0.3s ease;
+  overflow: hidden;
+}
+
+.sale-update-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  background: linear-gradient(135deg, #b45309 0%, #92400e 100%);
+  color: white;
+}
+
+.sale-update-modal .modal-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.sale-update-modal .close-modal-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sale-update-modal .close-modal-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.sale-update-form {
+  padding: 0;
+}
+
+.sale-update-form .form-content {
+  padding: 2rem;
+  margin-bottom: 0;
+  display: block;
+}
+
+.sale-update-form .form-actions {
+  padding: 1.5rem 2rem;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.sale-update-form .cancel-btn,
+.sale-update-form .submit-btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.sale-update-form .cancel-btn {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.sale-update-form .cancel-btn:hover {
+  background: #cbd5e1;
+}
+
+.sale-update-form .submit-btn {
+  background: linear-gradient(135deg, #b45309 0%, #92400e 100%);
+  color: white;
+}
+
+.sale-update-form .submit-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 25px rgba(180, 83, 9, 0.3);
 }

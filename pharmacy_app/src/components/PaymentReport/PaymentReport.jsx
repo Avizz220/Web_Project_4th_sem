@@ -11,6 +11,17 @@ const PaymentReport = ({ onBack }) => {
   const [typeFilter, setTypeFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 7;
+  
+  // Add Payment Form states
+  const [showAddPaymentForm, setShowAddPaymentForm] = useState(false);
+  const [newPaymentData, setNewPaymentData] = useState({
+    type: 'Bank Transfer',
+    date: new Date().toISOString().split('T')[0],
+    supplier: '',
+    amount: '',
+    status: 'Done'
+  });
+  const [formErrors, setFormErrors] = useState({});
 
   // Get current time-based greeting
   const getTimeBasedGreeting = () => {
@@ -167,8 +178,7 @@ const PaymentReport = ({ onBack }) => {
     setCurrentPage(pageNumber);
   };
 
-  // Add Payment Form Handlers - commented out for now
-  /*
+  // Add Payment Form Handlers
   const openAddPaymentForm = () => {
     console.log('Opening Add Payment form');
     setShowAddPaymentForm(true);
@@ -235,10 +245,9 @@ const PaymentReport = ({ onBack }) => {
       alert(`New payment to ${newPaymentData.supplier} has been added successfully!`);
       
       // Close the form
-      setShowAddPaymentForm(false);
+      closeAddPaymentForm();
     }
   };
-  */
 
   // Format date to readable format
   const formatDate = (dateString) => {
@@ -374,6 +383,10 @@ const PaymentReport = ({ onBack }) => {
             
             <button className="export-btn">
               <FiDownload /> Export Report
+            </button>
+            
+            <button className="add-payment-btn" onClick={openAddPaymentForm}>
+              <HiOutlineCurrencyDollar /> Add Payment
             </button>
           </div>
         </div>
@@ -666,6 +679,109 @@ const PaymentReport = ({ onBack }) => {
                   Delete
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Payment Modal */}
+        {showAddPaymentForm && (
+          <div className="modal-overlay">
+            <div className="modal-content add-payment-modal">
+              <div className="modal-header">
+                <h3>
+                  <HiOutlineCurrencyDollar className="modal-icon" />
+                  Add New Payment
+                </h3>
+                <button className="close-btn" onClick={closeAddPaymentForm}>
+                  <FiX />
+                </button>
+              </div>
+              <form onSubmit={handleAddPaymentSubmit}>
+                <div className="form-group">
+                  <label htmlFor="payment-type">Payment Type</label>
+                  <select
+                    id="payment-type"
+                    name="type"
+                    value={newPaymentData.type}
+                    onChange={handleNewPaymentChange}
+                    className={formErrors.type ? 'error' : ''}
+                  >
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Digital Wallet">Digital Wallet</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Credit Card">Credit Card</option>
+                  </select>
+                  {formErrors.type && <span className="error-message">{formErrors.type}</span>}
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="payment-date">Payment Date</label>
+                  <input
+                    type="date"
+                    id="payment-date"
+                    name="date"
+                    value={newPaymentData.date}
+                    onChange={handleNewPaymentChange}
+                    className={formErrors.date ? 'error' : ''}
+                  />
+                  {formErrors.date && <span className="error-message">{formErrors.date}</span>}
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="supplier-name">Supplier Name</label>
+                  <input
+                    type="text"
+                    id="supplier-name"
+                    name="supplier"
+                    placeholder="Enter supplier name"
+                    value={newPaymentData.supplier}
+                    onChange={handleNewPaymentChange}
+                    className={formErrors.supplier ? 'error' : ''}
+                  />
+                  {formErrors.supplier && <span className="error-message">{formErrors.supplier}</span>}
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="payment-amount">Amount (Rs.)</label>
+                  <input
+                    type="number"
+                    id="payment-amount"
+                    name="amount"
+                    placeholder="Enter payment amount"
+                    value={newPaymentData.amount}
+                    onChange={handleNewPaymentChange}
+                    step="0.01"
+                    min="0"
+                    className={formErrors.amount ? 'error' : ''}
+                  />
+                  {formErrors.amount && <span className="error-message">{formErrors.amount}</span>}
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="payment-status">Payment Status</label>
+                  <select
+                    id="payment-status"
+                    name="status"
+                    value={newPaymentData.status}
+                    onChange={handleNewPaymentChange}
+                    className={formErrors.status ? 'error' : ''}
+                  >
+                    <option value="Done">Done</option>
+                    <option value="Pending">Pending</option>
+                  </select>
+                  {formErrors.status && <span className="error-message">{formErrors.status}</span>}
+                </div>
+
+                <div className="form-actions">
+                  <button type="button" className="cancel-btn" onClick={closeAddPaymentForm}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="submit-btn">
+                    <HiOutlineCurrencyDollar />
+                    Add Payment
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

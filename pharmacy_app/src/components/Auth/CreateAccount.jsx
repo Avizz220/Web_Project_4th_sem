@@ -35,8 +35,8 @@ const CreateAccount = () => {
           <img src={pharmacyLoginIllustration} alt="Pharmacy Login" className="pharmacy-illustration" />
         </div>
         <div className="create-account-form">
-          <h2>H2Oasis</h2>
-          <h1>Create your Free Account</h1>
+          
+          <h1>Create your  Account</h1>
           
           <form onSubmit={handleSubmit}>
             <div className="form-group">

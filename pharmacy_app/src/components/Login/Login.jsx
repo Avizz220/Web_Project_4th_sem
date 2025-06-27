@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import './Login.css';
 import { FiMail, FiLock } from 'react-icons/fi';
-import { FcGoogle } from 'react-icons/fc';
-import { BsHospital } from 'react-icons/bs';
-import { FaUserMd, FaTruck } from 'react-icons/fa';
+import { FcGoogle, FcApproval, FcFlashOn, FcShipped } from 'react-icons/fc';
+import { MdLocalPharmacy } from 'react-icons/md';
+import { FaHeartbeat } from 'react-icons/fa';
 
 const Login = ({ onLogin }) => {
   const navigate = useNavigate();
@@ -37,14 +37,18 @@ const Login = ({ onLogin }) => {
     <div className="login-container">
       <div className="login-left">
         <div className="login-form">
-          <h1>WELCOME BACK</h1>
-          <p>Welcome back! Please enter your details.</p>
+          <div className="login-header">
+            <h1>WELCOME BACK</h1>
+            <p className="subtitle">Welcome back! Please enter your details.</p>
+          </div>
           
           {loginError && <div className="error-message">{loginError}</div>}
           
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className="login-form-main">
             <div className="form-group">
+              <label htmlFor="email">Email</label>
               <input
+                id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -54,7 +58,9 @@ const Login = ({ onLogin }) => {
             </div>
             
             <div className="form-group">
+              <label htmlFor="password">Password</label>
               <input
+                id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -70,34 +76,45 @@ const Login = ({ onLogin }) => {
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
                 />
-                <span>Remember me</span>
+                <span>Remember me for 30 days</span>
               </label>
               <button type="button" className="forgot-password">
-                Forgot password
+                Forgot password?
               </button>
             </div>
 
-            <button type="submit" className="sign-in-button">
-              Sign in
-            </button>
+            <div className="button-group">
+              <button type="submit" className="sign-in-button primary-button">
+                <span>Login</span>
+              </button>
 
-            <button type="button" className="google-button">
-              <FcGoogle />
-              Sign in with Google
-            </button>
+              <div className="divider">
+                <span>or</span>
+              </div>
 
-            <p className="signup-prompt">
-              Don't have an account? <Link to="/signup" className="signup-link">Sign up</Link>
-            </p>
+              <button type="button" className="google-button secondary-button">
+                <FcGoogle className="google-icon" />
+                <span>Continue with Google</span>
+              </button>
+            </div>
           </form>
+
+          <div className="signup-section">
+            <p className="signup-prompt">
+              Don't have an account? <Link to="/signup" className="signup-link">Create account</Link>
+            </p>
+          </div>
         </div>
       </div>
       
       <div className="login-right">
         <div className="overlay-content">
           <div className="pharmacy-brand">
-            <h1>Crystal Pharmacy</h1>
-            <p className="brand-tagline">Your Health,Our Priority</p>
+            <div className="brand-header">
+              <MdLocalPharmacy className="pharmacy-icon" />
+              <h1>Crystal Pharmacy</h1>
+            </div>
+            <p className="brand-tagline">Your Health, Our Priority</p>
           </div>
           
           <div className="greeting-section">
@@ -106,15 +123,15 @@ const Login = ({ onLogin }) => {
           
           <div className="feature-cards">
             <div className="feature-card">
-              <BsHospital className="icon" />
+              <FcApproval className="icon" />
               <span>Trusted Healthcare Partner</span>
             </div>
             <div className="feature-card">
-              <FaUserMd className="icon" />
+              <FaHeartbeat className="icon heartbeat" />
               <span>Quality Medicines & Care</span>
             </div>
             <div className="feature-card">
-              <FaTruck className="icon" />
+              <FcShipped className="icon" />
               <span>Fast & Reliable Service</span>
             </div>
           </div>

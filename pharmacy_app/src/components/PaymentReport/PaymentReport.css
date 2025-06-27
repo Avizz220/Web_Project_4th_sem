@@ -206,6 +206,28 @@
   box-shadow: 0 6px 15px rgba(14, 165, 233, 0.3);
 }
 
+.add-payment-btn {
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: white;
+  border: none;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 10px rgba(5, 150, 105, 0.25);
+}
+
+.add-payment-btn:hover {
+  background: linear-gradient(135deg, #047857, #059669);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(5, 150, 105, 0.3);
+}
+
 
 
 /* Payment Table */
@@ -1057,6 +1079,121 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Add Payment Modal Styles */
+.add-payment-modal {
+  max-width: 500px;
+}
+
+.add-payment-modal .modal-header {
+  background: linear-gradient(135deg, #059669, #10b981);
+}
+
+.add-payment-modal .modal-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 1.25rem;
+  color: white;
+}
+
+.add-payment-modal .modal-icon {
+  font-size: 1.5rem;
+}
+
+.add-payment-modal form {
+  padding: 1.5rem;
+}
+
+.add-payment-modal .form-group {
+  margin-bottom: 1rem;
+}
+
+.add-payment-modal .form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.add-payment-modal .form-group input,
+.add-payment-modal .form-group select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  transition: border-color 0.3s ease;
+  box-sizing: border-box;
+}
+
+.add-payment-modal .form-group input:focus,
+.add-payment-modal .form-group select:focus {
+  outline: none;
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+}
+
+.add-payment-modal .form-group input.error,
+.add-payment-modal .form-group select.error {
+  border-color: #ef4444;
+}
+
+.add-payment-modal .error-message {
+  color: #ef4444;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+  display: block;
+}
+
+.add-payment-modal .form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.add-payment-modal .submit-btn {
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.add-payment-modal .submit-btn:hover {
+  background: linear-gradient(135deg, #047857, #059669);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+}
+
+.add-payment-modal .cancel-btn {
+  background: white;
+  border: 1px solid #d1d5db;
+  color: #6b7280;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.add-payment-modal .cancel-btn:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
 }
 
 /* Import the modal styles */

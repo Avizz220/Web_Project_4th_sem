@@ -194,8 +194,10 @@
   box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
 }
 
+/* Divider - Perfect alignment */
 .divider {
-  text-align: center;
+  display: flex;
+  align-items: center;
   margin: 1.5rem 0;
   position: relative;
   color: #adb5bd;
@@ -204,19 +206,17 @@
 .divider::before,
 .divider::after {
   content: '';
-  position: absolute;
-  top: 50%;
-  width: 45%;
+  flex: 1;
   height: 1px;
   background: #dee2e6;
 }
 
-.divider::before {
-  left: 0;
-}
-
-.divider::after {
-  right: 0;
+.divider span {
+  padding: 0 1.25rem;
+  background: white;
+  font-weight: 500;
+  position: relative;
+  z-index: 1;
 }
 
 .google-signup-btn {
@@ -248,12 +248,12 @@
 .login-link {
   text-align: center;
   margin-top: 1.5rem;
-  color: #6c757d;
+  color: #3b82f6 ;
   font-size: 0.9rem;
 }
 
 .login-link a {
-  color: #00d2ff;
+  color:  #3b82f6;
   text-decoration: none;
   font-weight: 600;
 }
