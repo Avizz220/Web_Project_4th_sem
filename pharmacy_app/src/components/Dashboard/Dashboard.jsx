@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Dashboard.css';
 import Reports from '../Reports/Reports';
 import MedicineGroups from '../MedicineGroups/MedicineGroups';
@@ -19,6 +19,251 @@ const Dashboard = ({ onLogout }) => {
   const [contactDropdownOpen, setContactDropdownOpen] = useState(false);
   const [openDropdowns, setOpenDropdowns] = useState({});
   const [currentView, setCurrentView] = useState('dashboard'); // Add navigation state
+  
+  // Dashboard stats state
+  const [dashboardStats, setDashboardStats] = useState({
+    totalMedicines: 0,
+    totalCustomers: 0,
+    totalSuppliers: 0,
+    totalUsers: 0,
+    totalEquipment: 0,
+    medicineShortage: 0,
+    totalPayments: 0,
+    medicinesSold: 0,
+    invoicesGenerated: 0,
+    frequentlyBoughtItem: 'Loading...',
+    inventoryStatus: 'Good'
+  });
+  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  
+  // Get user information from localStorage
+  const [userInfo, setUserInfo] = useState({
+    username: 'User',
+    fullName: 'User',
+    role: 'User'
+  });
+
+  // Load user info from localStorage on component mount
+  useEffect(() => {
+    const storedUserInfo = localStorage.getItem('userInfo');
+    if (storedUserInfo) {
+      try {
+        const parsedUserInfo = JSON.parse(storedUserInfo);
+        setUserInfo({
+          username: parsedUserInfo.username || 'User',
+          fullName: parsedUserInfo.fullName || parsedUserInfo.username || 'User',
+          role: parsedUserInfo.role || 'User'
+        });
+      } catch (error) {
+        console.error('Error parsing user info:', error);
+      }
+    }
+    
+    // Fetch dashboard data on component mount
+    fetchDashboardData();
+  }, []);
+
+  // Fetch all dashboard statistics
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    setError('');
+    
+    try {
+      await Promise.all([
+        fetchMedicinesData(),
+        fetchCustomersData(),
+        fetchSuppliersData(),
+        fetchSalesData(),
+        fetchPaymentsData(),
+        fetchEquipmentData()
+      ]);
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+      setError('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch medicines data
+  const fetchMedicinesData = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/api/medicines?size=1000', {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        const medicines = data.medicines || [];
+        const shortageCount = medicines.filter(med => med.stockQuantity < 10).length;
+        
+        setDashboardStats(prev => ({
+          ...prev,
+          totalMedicines: medicines.length,
+          medicineShortage: shortageCount,
+          inventoryStatus: shortageCount === 0 ? 'Good' : shortageCount < 5 ? 'Warning' : 'Critical'
+        }));
+      }
+    } catch (err) {
+      console.error('Error fetching medicines:', err);
+    }
+  };
+
+  // Fetch customers data
+  const fetchCustomersData = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/api/customers', {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        setDashboardStats(prev => ({
+          ...prev,
+          totalCustomers: (data.customers || []).length
+        }));
+      }
+    } catch (err) {
+      console.error('Error fetching customers:', err);
+    }
+  };
+
+  // Fetch suppliers data
+  const fetchSuppliersData = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/api/suppliers', {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        setDashboardStats(prev => ({
+          ...prev,
+          totalSuppliers: (data.suppliers || []).length
+        }));
+      }
+    } catch (err) {
+      console.error('Error fetching suppliers:', err);
+    }
+  };
+
+  // Fetch sales data and calculate revenue
+  const fetchSalesData = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/api/sales?size=1000', {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        const sales = data.sales || [];
+        const totalRevenue = sales.reduce((sum, sale) => sum + (sale.totalAmount || 0), 0);
+        const totalQuantitySold = sales.reduce((sum, sale) => sum + (sale.quantity || 0), 0);
+        
+        // Find most frequently sold item
+        let mostFrequentItem = 'No sales data';
+        if (sales.length > 0) {
+          const itemFrequency = {};
+          sales.forEach(sale => {
+            const itemName = sale.medicineName || sale.itemName || 'Unknown Item';
+            itemFrequency[itemName] = (itemFrequency[itemName] || 0) + (sale.quantity || 0);
+          });
+          
+          const entries = Object.entries(itemFrequency);
+          if (entries.length > 0) {
+            mostFrequentItem = entries.reduce((a, b) => a[1] > b[1] ? a : b)[0];
+          }
+        }
+        
+        setDashboardStats(prev => ({
+          ...prev,
+          medicinesSold: totalQuantitySold,
+          invoicesGenerated: sales.length,
+          frequentlyBoughtItem: mostFrequentItem
+        }));
+      }
+    } catch (err) {
+      console.error('Error fetching sales:', err);
+      setDashboardStats(prev => ({
+        ...prev,
+        frequentlyBoughtItem: 'Unable to load'
+      }));
+    }
+  };
+
+  // Fetch payments data to get total payments amount
+  const fetchPaymentsData = async () => {
+    try {
+      console.log('Fetching payments data...');
+      const response = await fetch('http://localhost:8080/api/payments?size=1000', {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      console.log('Payments response status:', response.status);
+      const data = await response.json();
+      console.log('Payments response data:', data);
+      
+      if (data.success) {
+        const payments = data.payments || [];
+        console.log('Number of payments found:', payments.length);
+        console.log('Sample payment data:', payments[0]);
+        
+        const totalPaymentsAmount = payments.reduce((sum, payment) => {
+          const amount = parseFloat(payment.amount) || 0;
+          console.log(`Payment ${payment.paymentId}: ${amount}`);
+          return sum + amount;
+        }, 0);
+        
+        console.log('Total payments amount calculated:', totalPaymentsAmount);
+        
+        // Update total payments amount
+        setDashboardStats(prev => ({
+          ...prev,
+          totalPayments: totalPaymentsAmount
+        }));
+      } else {
+        console.error('Payments API returned error:', data.message);
+      }
+    } catch (err) {
+      console.error('Error fetching payments:', err);
+    }
+  };
+
+  // Fetch equipment data
+  const fetchEquipmentData = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/api/equipment?size=1000', {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        setDashboardStats(prev => ({
+          ...prev,
+          totalEquipment: (data.equipment || []).length
+        }));
+      }
+    } catch (err) {
+      console.error('Error fetching equipment:', err);
+    }
+  };
+
+  // Format currency
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount).replace('₹', 'Rs. ');
+  };
+
+  // Format number with commas
+  const formatNumber = (num) => {
+    return new Intl.NumberFormat('en-IN').format(num);
+  };
 
   // Toggle dropdown for navigation items
   const toggleDropdown = (itemName) => {
@@ -183,8 +428,8 @@ const Dashboard = ({ onLogout }) => {
             <img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=100&h=100&fit=crop&crop=face" alt="User" />
           </div>
           <div className="user-info">
-            <h3>Subash</h3>
-            <span className="user-role">Super Admin</span>
+            <h3>{userInfo.fullName}</h3>
+            <span className="user-role">{userInfo.role}</span>
           </div>
           <button className="user-menu-btn" onClick={onLogout} title="Logout">
             🚪
@@ -278,7 +523,7 @@ const Dashboard = ({ onLogout }) => {
         </nav>
 
         <div className="sidebar-footer">
-          <p>Powered by Subash © 2023</p>
+          <p>Powered by {userInfo.username} © 2023</p>
           <p>v1.1.3</p>
         </div>
       </div>
@@ -335,42 +580,56 @@ const Dashboard = ({ onLogout }) => {
             </button>
           </div>
 
+          {/* Error Display */}
+          {error && (
+            <div className="error-message">
+              <span>⚠️</span>
+              {error}
+              <button onClick={fetchDashboardData} style={{marginLeft: '10px', padding: '5px 10px'}}>
+                Retry
+              </button>
+            </div>
+          )}
+
           {/* Stats Cards */}
           <div className="stats-grid">
-            <div className="stat-card good">
-              <div className="stat-icon">✅</div>
+            <div className={`stat-card ${dashboardStats.inventoryStatus.toLowerCase()}`}>
+              <div className="stat-icon">
+                {dashboardStats.inventoryStatus === 'Good' ? '✅' : 
+                 dashboardStats.inventoryStatus === 'Warning' ? '⚠️' : '❌'}
+              </div>
               <div className="stat-content">
-                <h3>Good</h3>
+                <h3>{dashboardStats.inventoryStatus}</h3>
                 <p>Inventory Status</p>
               </div>
-             {/* ll */}
             </div>
 
             <div className="stat-card revenue">
               <div className="stat-icon">💰</div>
               <div className="stat-content">
-                <h3>Rs. 8,55,875</h3>
-                <p>Revenue • Jan 2022 ▼</p>
+                <h3>{loading ? 'Loading...' : formatCurrency(dashboardStats.totalPayments)}</h3>
+                <p>Total Payments • {selectedMonth} ▼</p>
               </div>
-              
             </div>
 
             <div className="stat-card medicines">
               <div className="stat-icon">📋</div>
               <div className="stat-content">
-                <h3>298</h3>
+                <h3>{loading ? 'Loading...' : formatNumber(dashboardStats.totalMedicines)}</h3>
                 <p>Medicines Available</p>
               </div>
-
             </div>
 
             <div className="stat-card shortage">
               <div className="stat-icon">⚠️</div>
               <div className="stat-content">
-                <h3>01</h3>
+                <h3>
+                  {loading ? 'Loading...' : 
+                   dashboardStats.medicineShortage < 5 ? 'No Medicine Shortage' : 
+                   formatNumber(dashboardStats.medicineShortage)}
+                </h3>
                 <p>Medicine Shortage</p>
               </div>
-             
             </div>
           </div>
 
@@ -380,16 +639,15 @@ const Dashboard = ({ onLogout }) => {
               <div className="inventory-section">
                 <div className="section-header">
                   <h2>Inventory</h2>
-                  
                 </div>
                 <div className="inventory-stats">
                   <div className="inventory-item">
-                    <h3>298</h3>
+                    <h3>{loading ? 'Loading...' : formatNumber(dashboardStats.totalMedicines)}</h3>
                     <p>Total no of Medicines</p>
                   </div>
                   <div className="inventory-item">
-                    <h3>24</h3>
-                    <p>Medicine Groups</p>
+                    <h3>{loading ? 'Loading...' : formatNumber(dashboardStats.totalEquipment)}</h3>
+                    <p>Total Equipment</p>
                   </div>
                 </div>
               </div>
@@ -397,16 +655,15 @@ const Dashboard = ({ onLogout }) => {
               <div className="pharmacy-section">
                 <div className="section-header">
                   <h2>My Pharmacy</h2>
-                 
                 </div>
                 <div className="pharmacy-stats">
                   <div className="pharmacy-item">
-                    <h3>04</h3>
+                    <h3>{loading ? 'Loading...' : formatNumber(dashboardStats.totalSuppliers)}</h3>
                     <p>Total no of Suppliers</p>
                   </div>
                   <div className="pharmacy-item">
-                    <h3>05</h3>
-                    <p>Total no of Users</p>
+                    <h3>{loading ? 'Loading...' : formatNumber(dashboardStats.totalCustomers)}</h3>
+                    <p>Total no of Customers</p>
                   </div>
                 </div>
               </div>
@@ -428,11 +685,11 @@ const Dashboard = ({ onLogout }) => {
                 </div>
                 <div className="report-stats">
                   <div className="report-item">
-                    <h3>70,856</h3>
+                    <h3>{loading ? 'Loading...' : formatNumber(dashboardStats.medicinesSold)}</h3>
                     <p>Qty of Medicines Sold</p>
                   </div>
                   <div className="report-item">
-                    <h3>5,288</h3>
+                    <h3>{loading ? 'Loading...' : formatNumber(dashboardStats.invoicesGenerated)}</h3>
                     <p>Invoices Generated</p>
                   </div>
                 </div>
@@ -441,15 +698,14 @@ const Dashboard = ({ onLogout }) => {
               <div className="customers-section">
                 <div className="section-header">
                   <h2>Customers</h2>
-                 
                 </div>
                 <div className="customers-stats">
                   <div className="customers-item">
-                    <h3>845</h3>
+                    <h3>{loading ? 'Loading...' : formatNumber(dashboardStats.totalCustomers)}</h3>
                     <p>Total no of Customers</p>
                   </div>
                   <div className="customers-item featured">
-                    <h3>Adalimumab</h3>
+                    <h3>{loading ? 'Loading...' : dashboardStats.frequentlyBoughtItem}</h3>
                     <p>Frequently bought Item</p>
                   </div>
                 </div>

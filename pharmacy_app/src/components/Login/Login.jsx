@@ -5,6 +5,7 @@ import { FiMail, FiLock } from 'react-icons/fi';
 import { FcGoogle, FcApproval, FcFlashOn, FcShipped } from 'react-icons/fc';
 import { MdLocalPharmacy } from 'react-icons/md';
 import { FaHeartbeat } from 'react-icons/fa';
+import { authAPI } from '../../services/authAPI';
 
 const Login = ({ onLogin }) => {
   const navigate = useNavigate();
@@ -12,16 +13,29 @@ const Login = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoginError('');
-    const loginSuccess = onLogin({ email, password, rememberMe });
-    
-    if (loginSuccess) {
-      navigate('/dashboard');
-    } else {
-      setLoginError('Invalid email or password. Please try again.');
+    setIsLoading(true);
+
+    try {
+      const result = await authAPI.login(email, password);
+      
+      if (result.success) {
+        // Call the parent component's onLogin function if provided
+        if (onLogin) {
+          onLogin(result.data);
+        }
+        navigate('/dashboard');
+      } else {
+        setLoginError(result.message || 'Invalid email/username or password. Please try again.');
+      }
+    } catch (error) {
+      setLoginError('Login failed. Please check your connection and try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -46,14 +60,15 @@ const Login = ({ onLogin }) => {
           
           <form onSubmit={handleSubmit} className="login-form-main">
             <div className="form-group">
-              <label htmlFor="email">Email</label>
+              <label htmlFor="email">Email or Username</label>
               <input
                 id="email"
-                type="email"
+                type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
+                placeholder="Enter your email or username"
                 required
+                disabled={isLoading}
               />
             </div>
             
@@ -66,6 +81,7 @@ const Login = ({ onLogin }) => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
+                disabled={isLoading}
               />
             </div>
             
@@ -84,8 +100,8 @@ const Login = ({ onLogin }) => {
             </div>
 
             <div className="button-group">
-              <button type="submit" className="sign-in-button primary-button">
-                <span>Login</span>
+              <button type="submit" className="sign-in-button primary-button" disabled={isLoading}>
+                <span>{isLoading ? 'Signing in...' : 'Login'}</span>
               </button>
 
               <div className="divider">

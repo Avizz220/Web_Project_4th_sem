@@ -10,6 +10,11 @@ const Suppliers = ({ onBack }) => {
   const [sortOption, setSortOption] = useState('newest');
   const [supplierSearchQuery, setSupplierSearchQuery] = useState('');
   
+  // Suppliers data state
+  const [suppliers, setSuppliers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -127,8 +132,9 @@ const Suppliers = ({ onBack }) => {
   };
   
   const handleUpdateSupplier = (supplier) => {
-    setIsEditMode(true);
+    console.log('Update supplier clicked:', supplier);
     setSelectedSupplier(supplier);
+    setIsEditMode(true);
     setFormData({
       name: supplier.name,
       company: supplier.company,
@@ -136,20 +142,52 @@ const Suppliers = ({ onBack }) => {
       phone: supplier.phone,
       supplyType: supplier.supplyType
     });
+    setFormErrors({});
     setIsModalOpen(true);
   };
   
   const handleDeleteClick = (supplier) => {
+    console.log('Delete click - supplier:', supplier);
     setSelectedSupplier(supplier);
     setIsDeleteModalOpen(true);
   };
   
-  const handleConfirmDelete = () => {
-    // In a real application, you would call an API to delete the supplier
-    // For now, we'll just simulate the deletion
-    console.log(`Deleting supplier: ${selectedSupplier.id}`);
-    setIsDeleteModalOpen(false);
-    setSelectedSupplier(null);
+  const handleConfirmDelete = async () => {
+    if (!selectedSupplier) {
+      console.log('No supplier selected for deletion');
+      return;
+    }
+
+    console.log('Deleting supplier:', selectedSupplier);
+    console.log('Delete URL:', `http://localhost:8080/api/suppliers/${selectedSupplier.id}`);
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/suppliers/${selectedSupplier.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      console.log('Delete response status:', response.status);
+      const result = await response.json();
+      console.log('Delete response:', result);
+      
+      if (result.success) {
+        alert(`Supplier ${selectedSupplier.name} deleted successfully!`);
+        
+        // Refresh the supplier list
+        await fetchSuppliers();
+      } else {
+        alert(`Failed to delete supplier: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Error deleting supplier:', error);
+      alert('Failed to connect to server');
+    } finally {
+      setIsDeleteModalOpen(false);
+      setSelectedSupplier(null);
+    }
   };
   
   const handleCancelDelete = () => {
@@ -188,18 +226,18 @@ const Suppliers = ({ onBack }) => {
       errors.email = "Invalid email format";
     }
     
-    // Phone validation
-    const phoneRegex = /^[\d\s+()-]{10,15}$/;
+    // Phone validation - must match (XXX) XXX-XXXX format
+    const phoneRegex = /^\(\d{3}\) \d{3}-\d{4}$/;
     if (!formData.phone.trim()) {
       errors.phone = "Phone number is required";
     } else if (!phoneRegex.test(formData.phone)) {
-      errors.phone = "Invalid phone number format";
+      errors.phone = "Phone number must be in format (XXX) XXX-XXXX";
     }
     
     return errors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Validate form
@@ -210,89 +248,103 @@ const Suppliers = ({ onBack }) => {
     if (Object.keys(validationErrors).length === 0) {
       setIsSubmitting(true);
       
-      // Simulate API call
-      setTimeout(() => {
+      console.log('Form submit - isEditMode:', isEditMode);
+      console.log('Form submit - selectedSupplier:', selectedSupplier);
+      
+      try {
+        // Prepare data for API (match the backend format)
+        const supplierData = {
+          supplierName: formData.name,
+          company: formData.company,
+          email: formData.email,
+          phoneNumber: formData.phone,
+          supplyType: formData.supplyType
+        };
+
+        console.log('Sending supplier data:', supplierData);
+
+        let response;
         if (isEditMode) {
-          console.log("Updated supplier data:", formData);
-          alert(`Supplier ${formData.name} updated successfully!`);
+          console.log('Update URL:', `http://localhost:8080/api/suppliers/${selectedSupplier.id}`);
+          // Update existing supplier
+          response = await fetch(`http://localhost:8080/api/suppliers/${selectedSupplier.id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(supplierData)
+          });
         } else {
-          console.log("New supplier data:", formData);
-          alert(`Supplier ${formData.name} added successfully!`);
+          // Create new supplier
+          response = await fetch('http://localhost:8080/api/suppliers', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(supplierData)
+          });
         }
+
+        console.log('Response status:', response.status);
+        const result = await response.json();
+        console.log('Response result:', result);
         
+        if (result.success) {
+          alert(`Supplier ${formData.name} ${isEditMode ? 'updated' : 'added'} successfully!`);
+          
+          // Refresh the supplier list
+          await fetchSuppliers();
+          
+          // Close modal
+          handleCloseModal();
+        } else {
+          setFormErrors({ general: result.message || 'Operation failed' });
+        }
+      } catch (error) {
+        console.error('Error submitting supplier:', error);
+        setFormErrors({ general: 'Failed to connect to server' });
+      } finally {
         setIsSubmitting(false);
-        handleCloseModal();
-      }, 1000);
+      }
     }
   };
 
-  // Sample suppliers data
-  const suppliers = [
-    {
-      id: 1,
-      name: 'Johnson Medical',
-      company: 'Johnson & Johnson',
-      phone: '(225) 555-0118',
-      email: 'orders@johnsonmedical.com',
-      supplyType: 'Medicine'
-    },
-    {
-      id: 2,
-      name: 'MedEquip Solutions',
-      company: 'MedEquip Inc',
-      phone: '(205) 555-0100',
-      email: 'sales@medequip.com',
-      supplyType: 'Equipment'
-    },
-    {
-      id: 3,
-      name: 'PharmaPro Labs',
-      company: 'PharmaPro',
-      phone: '(302) 555-0107',
-      email: 'distribution@pharmapro.com',
-      supplyType: 'Medicine'
-    },
-    {
-      id: 4,
-      name: 'MediTech Supplies',
-      company: 'MediTech',
-      phone: '(252) 555-0126',
-      email: 'info@meditech.com',
-      supplyType: 'Equipment'
-    },
-    {
-      id: 5,
-      name: 'Global Pharma',
-      company: 'Global Pharmaceutical',
-      phone: '(629) 555-0129',
-      email: 'orders@globalpharma.com',
-      supplyType: 'Medicine'
-    },
-    {
-      id: 6,
-      name: 'HealthEquip',
-      company: 'HealthEquip Co.',
-      phone: '(406) 555-0120',
-      email: 'sales@healthequip.com',
-      supplyType: 'Equipment'
-    },
-    {
-      id: 7,
-      name: 'MedSource',
-      company: 'Medical Source Ltd',
-      phone: '(208) 555-0112',
-      email: 'contact@medsource.com',
-      supplyType: 'Medicine'
-    },
-    {
-      id: 8,
-      name: 'PharmaDistribution',
-      company: 'Pharma Distribution Inc',
-      phone: '(704) 555-0127',
-      email: 'supplies@pharmadist.com',
-      supplyType: 'Medicine'
+  // Fetch suppliers from API
+  const fetchSuppliers = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:8080/api/suppliers');
+      const data = await response.json();
+      
+      if (data.success) {
+        // Transform API data to match UI format
+        const transformedSuppliers = data.suppliers.map(supplier => ({
+          id: supplier.supplierId,
+          name: supplier.supplierName,
+          company: supplier.company,
+          phone: supplier.phoneNumber,
+          email: supplier.email,
+          supplyType: supplier.supplyType
+        }));
+        setSuppliers(transformedSuppliers);
+        setError('');
+      } else {
+        setError(data.message || 'Failed to fetch suppliers');
+        setSuppliers([]);
+      }
+    } catch (err) {
+      console.error('Error fetching suppliers:', err);
+      setError('Failed to connect to server');
+      setSuppliers([]);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  // Load suppliers on component mount
+  useEffect(() => {
+    fetchSuppliers();
+  }, []);
 
   // Filter suppliers based on active tab and search query
   const filteredSuppliers = suppliers.filter(supplier => {
@@ -418,22 +470,22 @@ const Suppliers = ({ onBack }) => {
             </div>
             <div className="stat-content">
               <p className="stat-title">Total Suppliers</p>
-              <h3 className="stat-value">143</h3>
+              <h3 className="stat-value">{suppliers.length}</h3>
               <p className="stat-change increase">
-                <BsArrowUp /> 12% this month
+                <BsArrowUp /> All suppliers
               </p>
             </div>
           </div>
           
-          <div className="stat-card active-supplies">
+          <div className="stat-card medicine-supplies">
             <div className="stat-icon-container">
               <FiPackage className="stat-icon" />
             </div>
             <div className="stat-content">
-              <p className="stat-title">Active Supply Orders</p>
-              <h3 className="stat-value">38</h3>
-              <p className="stat-change increase">
-                <BsArrowUp /> 8% this month
+              <p className="stat-title">Medicine Suppliers</p>
+              <h3 className="stat-value">{suppliers.filter(s => s.supplyType === 'Medicine').length}</h3>
+              <p className="stat-change decrease">
+                <BsArrowDown /> Equipment: {suppliers.filter(s => s.supplyType === 'Equipment').length}
               </p>
             </div>
           </div>
@@ -507,7 +559,26 @@ const Suppliers = ({ onBack }) => {
                 </tr>
               </thead>
               <tbody>
-                {sortedSuppliers.length > 0 ? (
+                {loading ? (
+                  <tr>
+                    <td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>
+                      Loading suppliers...
+                    </td>
+                  </tr>
+                ) : error ? (
+                  <tr>
+                    <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: 'red' }}>
+                      Error: {error}
+                      <br />
+                      <button 
+                        onClick={fetchSuppliers} 
+                        style={{ marginTop: '10px', padding: '5px 10px', cursor: 'pointer' }}
+                      >
+                        Retry
+                      </button>
+                    </td>
+                  </tr>
+                ) : sortedSuppliers.length > 0 ? (
                   sortedSuppliers.map(supplier => (
                     <tr 
                       key={supplier.id} 
@@ -570,6 +641,11 @@ const Suppliers = ({ onBack }) => {
             </div>
             
             <form onSubmit={handleSubmit} className="supplier-form">
+              {formErrors.general && (
+                <div className="error-banner">
+                  {formErrors.general}
+                </div>
+              )}
               <div className="form-content">
                 <div className="form-group">
                   <label htmlFor="name">Supplier Name <span className="required-mark">*</span></label>
@@ -728,14 +804,16 @@ const Suppliers = ({ onBack }) => {
 
             <div className="popup-actions">
               <button className="btn-update" onClick={() => {
-                handleUpdateSupplier(selectedSupplier);
-                closePopup();
+                const supplierToUpdate = selectedSupplier; // Store reference
+                closePopup(); // Close popup first
+                handleUpdateSupplier(supplierToUpdate); // Then handle update with stored reference
               }}>
                 <FiEdit /> Update
               </button>
               <button className="btn-delete" onClick={() => {
-                handleDeleteClick(selectedSupplier);
-                closePopup();
+                const supplierToDelete = selectedSupplier; // Store reference
+                closePopup(); // Close popup first
+                handleDeleteClick(supplierToDelete); // Then handle delete with stored reference
               }}>
                 <FiTrash2 /> Delete
               </button>

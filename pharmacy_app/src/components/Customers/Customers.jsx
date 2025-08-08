@@ -26,13 +26,45 @@ const Customers = ({ onBack }) => {
     name: '',
     phone: '',
     email: '',
-    gender: 'Male',
-    lastTransaction: new Date().toISOString().split('T')[0]
+    gender: 'Male'
   });
   
   // Form validation
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Customer data state
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  // Fetch customers from API
+  const fetchCustomers = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:8080/api/customers');
+      const data = await response.json();
+      
+      if (data.success) {
+        setCustomers(data.customers || []);
+        setError('');
+      } else {
+        setError(data.message || 'Failed to fetch customers');
+        setCustomers([]);
+      }
+    } catch (err) {
+      console.error('Error fetching customers:', err);
+      setError('Failed to connect to server');
+      setCustomers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load customers on component mount
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
 
   // Get current time-based greeting and icon
   const getTimeBasedGreeting = () => {
@@ -78,8 +110,7 @@ const Customers = ({ onBack }) => {
       name: '',
       phone: '',
       email: '',
-      gender: 'Male',
-      lastTransaction: new Date().toISOString().split('T')[0]
+      gender: 'Male'
     });
     setIsModalOpen(true);
   };
@@ -93,37 +124,68 @@ const Customers = ({ onBack }) => {
       name: '',
       phone: '',
       email: '',
-      gender: 'Male',
-      lastTransaction: new Date().toISOString().split('T')[0]
+      gender: 'Male'
     });
     setFormErrors({});
     setIsSubmitting(false);
   };
   
   const handleUpdateCustomer = (customer) => {
-    setIsEditMode(true);
+    console.log('Update customer clicked:', customer);
     setSelectedCustomer(customer);
+    setIsEditMode(true);
     setFormData({
-      name: customer.name,
-      phone: customer.phone,
+      name: customer.customerName,
+      phone: customer.phoneNumber,
       email: customer.email,
-      gender: customer.gender,
-      lastTransaction: new Date(customer.lastTransaction).toISOString().split('T')[0]
+      gender: customer.gender
     });
+    setFormErrors({});
     setIsModalOpen(true);
   };
   
   const handleDeleteClick = (customer) => {
+    console.log('Delete click - customer:', customer);
     setSelectedCustomer(customer);
     setIsDeleteModalOpen(true);
   };
   
-  const handleConfirmDelete = () => {
-    // In a real application, you would call an API to delete the customer
-    // For now, we'll just simulate the deletion
-    console.log(`Deleting customer: ${selectedCustomer.id}`);
-    setIsDeleteModalOpen(false);
-    setSelectedCustomer(null);
+  const handleConfirmDelete = async () => {
+    if (!selectedCustomer) {
+      console.log('No customer selected for deletion');
+      return;
+    }
+
+    console.log('Deleting customer:', selectedCustomer);
+    console.log('Delete URL:', `http://localhost:8080/api/customers/${selectedCustomer.id}`);
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/customers/${selectedCustomer.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      console.log('Delete response status:', response.status);
+      const result = await response.json();
+      console.log('Delete response:', result);
+      
+      if (result.success) {
+        alert(`Customer ${selectedCustomer.customerName} deleted successfully!`);
+        
+        // Refresh the customer list
+        await fetchCustomers();
+      } else {
+        alert(`Failed to delete customer: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Error deleting customer:', error);
+      alert('Failed to connect to server');
+    } finally {
+      setIsDeleteModalOpen(false);
+      setSelectedCustomer(null);
+    }
   };
   
   const handleCancelDelete = () => {
@@ -161,18 +223,18 @@ const Customers = ({ onBack }) => {
       errors.email = "Invalid email format";
     }
     
-    // Phone validation
-    const phoneRegex = /^[\d\s+()-]{10,15}$/;
+    // Phone validation - must match (XXX) XXX-XXXX format
+    const phoneRegex = /^\(\d{3}\) \d{3}-\d{4}$/;
     if (!formData.phone.trim()) {
       errors.phone = "Phone number is required";
     } else if (!phoneRegex.test(formData.phone)) {
-      errors.phone = "Invalid phone number format";
+      errors.phone = "Phone number must be in format (XXX) XXX-XXXX";
     }
     
     return errors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Validate form
@@ -183,19 +245,63 @@ const Customers = ({ onBack }) => {
     if (Object.keys(validationErrors).length === 0) {
       setIsSubmitting(true);
       
-      // Simulate API call
-      setTimeout(() => {
+      console.log('Form submit - isEditMode:', isEditMode);
+      console.log('Form submit - selectedCustomer:', selectedCustomer);
+      
+      try {
+        // Prepare data for API (match the backend format)
+        const customerData = {
+          customerName: formData.name,
+          phoneNumber: formData.phone,
+          email: formData.email,
+          gender: formData.gender
+        };
+
+        console.log('Sending customer data:', customerData);
+
+        let response;
         if (isEditMode) {
-          console.log("Updated customer data:", formData);
-          alert(`Customer ${formData.name} updated successfully!`);
+          console.log('Update URL:', `http://localhost:8080/api/customers/${selectedCustomer.id}`);
+          // Update existing customer
+          response = await fetch(`http://localhost:8080/api/customers/${selectedCustomer.id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(customerData)
+          });
         } else {
-          console.log("New customer data:", formData);
-          alert(`Customer ${formData.name} added successfully!`);
+          // Create new customer
+          response = await fetch('http://localhost:8080/api/customers', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(customerData)
+          });
         }
+
+        console.log('Response status:', response.status);
+        const result = await response.json();
+        console.log('Response result:', result);
         
+        if (result.success) {
+          alert(`Customer ${formData.name} ${isEditMode ? 'updated' : 'added'} successfully!`);
+          
+          // Refresh the customer list
+          await fetchCustomers();
+          
+          // Close modal
+          handleCloseModal();
+        } else {
+          setFormErrors({ general: result.message || 'Operation failed' });
+        }
+      } catch (error) {
+        console.error('Error submitting customer:', error);
+        setFormErrors({ general: 'Failed to connect to server' });
+      } finally {
         setIsSubmitting(false);
-        handleCloseModal();
-      }, 1000);
+      }
     }
   };
 
@@ -244,85 +350,17 @@ const Customers = ({ onBack }) => {
     };
   }, [showActionPopup]);
 
-  // Sample customers data
-  const customers = [
-    {
-      id: 1,
-      name: 'Jane Cooper',
-      phone: '(225) 555-0118',
-      email: 'jane@microsoft.com',
-      gender: 'Female',
-      lastTransaction: '2025-06-20'
-    },
-    {
-      id: 2,
-      name: 'Floyd Miles',
-      phone: '(205) 555-0100',
-      email: 'floyd@yahoo.com',
-      gender: 'Male',
-      lastTransaction: '2025-06-18'
-    },
-    {
-      id: 3,
-      name: 'Ronald Richards',
-      phone: '(302) 555-0107',
-      email: 'ronald@adobe.com',
-      gender: 'Male',
-      lastTransaction: '2025-06-15'
-    },
-    {
-      id: 4,
-      name: 'Marvin McKinney',
-      phone: '(252) 555-0126',
-      email: 'marvin@tesla.com',
-      gender: 'Male',
-      lastTransaction: '2025-06-24'
-    },
-    {
-      id: 5,
-      name: 'Jerome Bell',
-      phone: '(629) 555-0129',
-      email: 'jerome@google.com',
-      gender: 'Male',
-      lastTransaction: '2025-06-23'
-    },
-    {
-      id: 6,
-      name: 'Kathryn Murphy',
-      phone: '(406) 555-0120',
-      email: 'kathryn@microsoft.com',
-      gender: 'Female',
-      lastTransaction: '2025-06-22'
-    },
-    {
-      id: 7,
-      name: 'Jacob Jones',
-      phone: '(208) 555-0112',
-      email: 'jacob@yahoo.com',
-      gender: 'Male',
-      lastTransaction: '2025-06-19'
-    },
-    {
-      id: 8,
-      name: 'Kristin Watson',
-      phone: '(704) 555-0127',
-      email: 'kristin@facebook.com',
-      gender: 'Female',
-      lastTransaction: '2025-06-17'
-    }
-  ];
-
   // Filter customers based on active tab and search query
   const filteredCustomers = customers.filter(customer => {
-    // Since we removed status, we'll change the tab filter to filter by gender
+    // Filter by gender and search query
     const matchesTab = activeTab === 'all' || 
                       (activeTab === 'active' && customer.gender === 'Male') ||
                       (activeTab === 'inactive' && customer.gender === 'Female');
     
     const matchesSearch = customerSearchQuery === '' || 
-      customer.name.toLowerCase().includes(customerSearchQuery.toLowerCase()) ||
-      customer.email.toLowerCase().includes(customerSearchQuery.toLowerCase()) ||
-      customer.gender.toLowerCase().includes(customerSearchQuery.toLowerCase());
+      customer.customerName?.toLowerCase().includes(customerSearchQuery.toLowerCase()) ||
+      customer.email?.toLowerCase().includes(customerSearchQuery.toLowerCase()) ||
+      customer.gender?.toLowerCase().includes(customerSearchQuery.toLowerCase());
     
     return matchesTab && matchesSearch;
   });
@@ -332,22 +370,43 @@ const Customers = ({ onBack }) => {
   
   switch(sortOption) {
     case 'newest':
-      // Keep original order (assumed to be newest)
+      // Sort by createdAt if available, otherwise by id
+      sortedCustomers.sort((a, b) => {
+        if (a.createdAt && b.createdAt) {
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        }
+        return b.id - a.id; // Fallback to ID sorting
+      });
       break;
     case 'oldest':
-      sortedCustomers.reverse();
+      sortedCustomers.sort((a, b) => {
+        if (a.createdAt && b.createdAt) {
+          return new Date(a.createdAt) - new Date(b.createdAt);
+        }
+        return a.id - b.id; // Fallback to ID sorting
+      });
       break;
     case 'name-asc':
-      sortedCustomers.sort((a, b) => a.name.localeCompare(b.name));
+      sortedCustomers.sort((a, b) => a.customerName.localeCompare(b.customerName));
       break;
     case 'name-desc':
-      sortedCustomers.sort((a, b) => b.name.localeCompare(a.name));
+      sortedCustomers.sort((a, b) => b.customerName.localeCompare(a.customerName));
       break;
     case 'recent-transaction':
-      sortedCustomers.sort((a, b) => new Date(b.lastTransaction) - new Date(a.lastTransaction));
+      sortedCustomers.sort((a, b) => {
+        if (!a.lastTransaction && !b.lastTransaction) return 0;
+        if (!a.lastTransaction) return 1;
+        if (!b.lastTransaction) return -1;
+        return new Date(b.lastTransaction) - new Date(a.lastTransaction);
+      });
       break;
     case 'oldest-transaction':
-      sortedCustomers.sort((a, b) => new Date(a.lastTransaction) - new Date(b.lastTransaction));
+      sortedCustomers.sort((a, b) => {
+        if (!a.lastTransaction && !b.lastTransaction) return 0;
+        if (!a.lastTransaction) return 1;
+        if (!b.lastTransaction) return -1;
+        return new Date(a.lastTransaction) - new Date(b.lastTransaction);
+      });
       break;
     default:
       break;
@@ -399,9 +458,9 @@ const Customers = ({ onBack }) => {
             </div>
             <div className="stat-content">
               <p className="stat-title">Total Customers</p>
-              <h3 className="stat-value">5,423</h3>
+              <h3 className="stat-value">{customers.length}</h3>
               <p className="stat-change increase">
-                <BsArrowUp /> 16% this month
+                <BsArrowUp /> Active customers
               </p>
             </div>
           </div>
@@ -411,10 +470,10 @@ const Customers = ({ onBack }) => {
               <FiUserCheck className="stat-icon" />
             </div>
             <div className="stat-content">
-              <p className="stat-title">Members</p>
-              <h3 className="stat-value">1,893</h3>
+              <p className="stat-title">Male Customers</p>
+              <h3 className="stat-value">{customers.filter(c => c.gender === 'Male').length}</h3>
               <p className="stat-change decrease">
-                <BsArrowDown /> 1% this month
+                <BsArrowDown /> Female: {customers.filter(c => c.gender === 'Female').length}
               </p>
             </div>
           </div>
@@ -477,37 +536,54 @@ const Customers = ({ onBack }) => {
           
           {/* Customer Table */}
           <div className="customer-table-container">
-            <table className="customer-table">
-              <thead>
-                <tr>
-                  <th>Customer Name</th>
-                  <th>Phone Number</th>
-                  <th>Email</th>
-                  <th>Gender</th>
-                  <th>Last Transaction</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedCustomers.length > 0 ? (
-                  sortedCustomers.map(customer => (
+            {loading ? (
+              <div className="loading-state">
+                <p>Loading customers...</p>
+              </div>
+            ) : error ? (
+              <div className="error-state">
+                <p>Error: {error}</p>
+                <button onClick={fetchCustomers} className="retry-btn">
+                  Retry
+                </button>
+              </div>
+            ) : (
+              <table className="customer-table">
+                <thead>
+                  <tr>
+                    <th>Customer Name</th>
+                    <th>Phone Number</th>
+                    <th>Email</th>
+                    <th>Gender</th>
+                    <th>Last Transaction</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedCustomers.length > 0 ? (
+                    sortedCustomers.map(customer => (
                     <tr 
                       key={customer.id} 
                       onClick={(e) => handleRowClick(customer, e)}
                       className={activeRowId === customer.id ? 'active' : ''}
                     >
-                      <td>{customer.name}</td>
-                      <td>{customer.phone}</td>
+                      <td>{customer.customerName}</td>
+                      <td>{customer.phoneNumber}</td>
                       <td>{customer.email}</td>
                       <td>
-                        <span className={`gender-pill ${customer.gender.toLowerCase()}`}>
+                        <span className={`gender-pill ${customer.gender?.toLowerCase()}`}>
                           {customer.gender}
                         </span>
                       </td>
-                      <td>{new Date(customer.lastTransaction).toLocaleDateString('en-GB', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                      })}</td>
+                      <td>
+                        {customer.lastTransaction 
+                          ? new Date(customer.lastTransaction).toLocaleDateString('en-GB', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            })
+                          : 'No transactions'
+                        }
+                      </td>
                     </tr>
                   ))
                 ) : (
@@ -517,8 +593,9 @@ const Customers = ({ onBack }) => {
                     </td>
                   </tr>
                 )}
-              </tbody>
-            </table>
+                </tbody>
+              </table>
+            )}
           </div>
           
           <div className="pagination">
@@ -555,6 +632,11 @@ const Customers = ({ onBack }) => {
             </div>
             
             <form onSubmit={handleSubmit} className="customer-form">
+              {formErrors.general && (
+                <div className="error-banner">
+                  {formErrors.general}
+                </div>
+              )}
               <div className="form-content">
                 <div className="form-group">
                   <label htmlFor="name">Customer Name <span className="required-mark">*</span></label>
@@ -630,19 +712,6 @@ const Customers = ({ onBack }) => {
                       </label>
                     </div>
                   </div>
-                  
-                  <div className="form-group">
-                    <label htmlFor="lastTransaction">Last Transaction Date</label>
-                    <input
-                      type="date"
-                      id="lastTransaction"
-                      name="lastTransaction"
-                      value={formData.lastTransaction}
-                      onChange={handleInputChange}
-                      className={formErrors.lastTransaction ? 'error' : ''}
-                    />
-                    {formErrors.lastTransaction && <span className="error-message">{formErrors.lastTransaction}</span>}
-                  </div>
                 </div>
               </div>
               
@@ -676,7 +745,7 @@ const Customers = ({ onBack }) => {
               <div className="delete-icon">
                 <FiTrash2 />
               </div>
-              <p>Are you sure you want to delete the customer <strong>{selectedCustomer?.name}</strong>?</p>
+              <p>Are you sure you want to delete the customer <strong>{selectedCustomer?.customerName}</strong>?</p>
               <p className="delete-warning">This action cannot be undone.</p>
             </div>
             <div className="delete-modal-actions">
@@ -697,35 +766,41 @@ const Customers = ({ onBack }) => {
           <div className="popup-content">
             <h3>Customer Details</h3>
             <div className="popup-field">
-              <strong>Name:</strong> {selectedCustomer.name}
+              <strong>Name:</strong> {selectedCustomer.customerName}
             </div>
             <div className="popup-field">
               <strong>Email:</strong> {selectedCustomer.email}
             </div>
             <div className="popup-field">
-              <strong>Phone:</strong> {selectedCustomer.phone}
+              <strong>Phone:</strong> {selectedCustomer.phoneNumber}
             </div>
             <div className="popup-field">
               <strong>Gender:</strong> {selectedCustomer.gender}
             </div>
             <div className="popup-field">
-              <strong>Last Transaction:</strong> {new Date(selectedCustomer.lastTransaction).toLocaleDateString('en-GB', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-              })}
+              <strong>Last Transaction:</strong> {
+                selectedCustomer.lastTransaction 
+                  ? new Date(selectedCustomer.lastTransaction).toLocaleDateString('en-GB', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric'
+                    })
+                  : 'No transactions'
+              }
             </div>
 
             <div className="popup-actions">
               <button className="btn-update" onClick={() => {
-                handleUpdateCustomer(selectedCustomer);
-                closePopup();
+                const customerToUpdate = selectedCustomer; // Store reference
+                closePopup(); // Close popup first
+                handleUpdateCustomer(customerToUpdate); // Then handle update with stored reference
               }}>
                 <FiEdit /> Update
               </button>
               <button className="btn-delete" onClick={() => {
-                handleDeleteClick(selectedCustomer);
-                closePopup();
+                const customerToDelete = selectedCustomer; // Store reference
+                closePopup(); // Close popup first
+                handleDeleteClick(customerToDelete); // Then handle delete with stored reference
               }}>
                 <FiTrash2 /> Delete
               </button>

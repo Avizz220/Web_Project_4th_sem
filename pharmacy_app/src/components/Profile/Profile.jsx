@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Profile.css';
 
 const Profile = ({ onBack }) => {
   // Set document title when component mounts
-  React.useEffect(() => {
+  useEffect(() => {
     document.title = "Application Settings | Crystal Pharmacy";
     return () => {
       document.title = "Crystal Pharmacy";
@@ -11,12 +11,8 @@ const Profile = ({ onBack }) => {
   }, []);
 
   const [profileData, setProfileData] = useState({
-    firstName: 'Peter',
-    lastName: 'Griffin',
-    email: 'hello@designtoproducts.io',
-    birthday: { day: '09', month: '12', year: '1975' },
-    gender: '',
-    userId: 'siderabcdefghijklmnopqrstuvwxyz'
+    fullName: '',
+    email: ''
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -24,6 +20,74 @@ const Profile = ({ onBack }) => {
     newPassword: '',
     confirmPassword: ''
   });
+
+  const [loading, setLoading] = useState(false);
+  const [userInfo, setUserInfo] = useState(null);
+
+  // Load user data when component mounts
+  useEffect(() => {
+    const loadUserData = async () => {
+      console.log('Loading user data...');
+      const userData = localStorage.getItem('userInfo');
+      const token = localStorage.getItem('authToken');
+      
+      console.log('User data from localStorage:', userData ? 'Found' : 'Not found');
+      console.log('Auth token from localStorage:', token ? 'Found' : 'Not found');
+      
+      if (userData) {
+        const user = JSON.parse(userData);
+        setUserInfo(user);
+        setProfileData({
+          fullName: user.fullName || '',
+          email: user.email || ''
+        });
+        console.log('Set initial profile data:', { fullName: user.fullName, email: user.email });
+      }
+
+      // Fetch current user profile from API to get latest data
+      if (token) {
+        try {
+          console.log('Fetching user profile from API...');
+          const response = await fetch('http://localhost:8080/api/profile', {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          console.log('API response status:', response.status);
+
+          if (response.ok) {
+            const data = await response.json();
+            console.log('API response data:', data);
+            
+            if (data.success && data.profile) {
+              const profile = data.profile;
+              setProfileData({
+                fullName: profile.fullName || '',
+                email: profile.email || ''
+              });
+              
+              // Update userInfo state with latest data
+              setUserInfo(profile);
+              
+              // Update localStorage with latest user info
+              localStorage.setItem('userInfo', JSON.stringify(profile));
+              console.log('Updated profile data from API');
+            }
+          } else {
+            console.error('Failed to fetch profile:', response.status, response.statusText);
+          }
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+        }
+      } else {
+        console.warn('No auth token found, skipping API call');
+      }
+    };
+
+    loadUserData();
+  }, []);
 
   // Get current time-based greeting
   const getTimeBasedGreeting = () => {
@@ -59,34 +123,128 @@ const Profile = ({ onBack }) => {
     }));
   };
 
-  const handleBirthdayChange = (field, value) => {
-    setProfileData(prev => ({
-      ...prev,
-      birthday: {
-        ...prev.birthday,
-        [field]: value
-      }
-    }));
-  };
-
   const handlePasswordChange = (field, value) => {
     setPasswordData(prev => ({
       ...prev,
       [field]: value
     }));
   };
-  const handleSaveProfile = () => {
-    console.log('Saving profile:', profileData);
-    alert('Profile changes saved successfully!');
+
+  const handleSaveProfile = async () => {
+    if (!profileData.fullName.trim() || !profileData.email.trim()) {
+      alert('Please fill in all required fields.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('authToken');
+      console.log('Save profile - Token found:', token ? 'Yes' : 'No');
+      
+      if (!token) {
+        alert('Authentication token not found. Please login again.');
+        return;
+      }
+
+      console.log('Sending profile update request with data:', {
+        fullName: profileData.fullName,
+        email: profileData.email
+      });
+
+      const response = await fetch('http://localhost:8080/api/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          fullName: profileData.fullName,
+          email: profileData.email
+        })
+      });
+
+      console.log('Profile update response status:', response.status);
+      const data = await response.json();
+      console.log('Profile update response data:', data);
+
+      if (data.success) {
+        // Update localStorage with new user info
+        const updatedUserInfo = {
+          ...userInfo,
+          fullName: profileData.fullName,
+          email: profileData.email
+        };
+        localStorage.setItem('userInfo', JSON.stringify(updatedUserInfo));
+        setUserInfo(updatedUserInfo);
+        
+        alert('Profile updated successfully!');
+      } else {
+        alert('Failed to update profile: ' + data.message);
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Failed to update profile. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSavePassword = () => {
+  const handleSavePassword = async () => {
+    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      alert('Please fill in all password fields.');
+      return;
+    }
+
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       alert('New passwords do not match!');
       return;
     }
-    console.log('Changing password');
-    alert('Password changed successfully! You will be asked to log in again with your new password after you save your changes.');
+
+    if (passwordData.newPassword.length < 6) {
+      alert('New password must be at least 6 characters long.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        alert('Authentication token not found. Please login again.');
+        return;
+      }
+
+      const response = await fetch('http://localhost:8080/api/profile/password', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword,
+          confirmPassword: passwordData.confirmPassword
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Clear password fields
+        setPasswordData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+        alert('Password changed successfully! You will be asked to log in again with your new password after you save your changes.');
+      } else {
+        alert('Failed to change password: ' + data.message);
+      }
+    } catch (error) {
+      console.error('Error changing password:', error);
+      alert('Failed to change password. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -111,7 +269,9 @@ const Profile = ({ onBack }) => {
             {getCurrentDate()}
           </div>
         </div>
-      </header>      {/* Profile Content */}
+      </header>
+
+      {/* Profile Content */}
       <div className="profile-content">
         {/* Profile Information Form */}
         <div className="profile-form-container">
@@ -119,112 +279,39 @@ const Profile = ({ onBack }) => {
             <h2 className="section-title">User Profile</h2>
             
             <div className="form-grid">
-              <div className="form-group">
+              <div className="form-group full-width">
                 <label className="form-label required">
-                  
-                  FIRST NAME
+                  FULL NAME
                 </label>
                 <input
                   type="text"
-                  value={profileData.firstName}
-                  onChange={(e) => handleProfileChange('firstName', e.target.value)}
+                  value={profileData.fullName}
+                  onChange={(e) => handleProfileChange('fullName', e.target.value)}
                   className="form-input"
+                  placeholder="Enter your full name"
                 />
               </div>
 
-              <div className="form-group">
-                <label className="form-label">LAST NAME</label>
-                <input
-                  type="text"
-                  value={profileData.lastName}
-                  onChange={(e) => handleProfileChange('lastName', e.target.value)}
-                  className="form-input"
-                />
-              </div>
-
-              <div className="form-group">
+              <div className="form-group full-width">
                 <label className="form-label required">
                   EMAIL
-                
                 </label>
                 <input
                   type="email"
                   value={profileData.email}
                   onChange={(e) => handleProfileChange('email', e.target.value)}
                   className="form-input"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">BIRTHDAY</label>
-                <div className="birthday-inputs">
-                  <select
-                    value={profileData.birthday.day}
-                    onChange={(e) => handleBirthdayChange('day', e.target.value)}
-                    className="form-input birthday-select"
-                  >
-                    <option value="">Day</option>
-                    {Array.from({ length: 31 }, (_, i) => (
-                      <option key={i + 1} value={String(i + 1).padStart(2, '0')}>
-                        {String(i + 1).padStart(2, '0')}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={profileData.birthday.month}
-                    onChange={(e) => handleBirthdayChange('month', e.target.value)}
-                    className="form-input birthday-select"
-                  >
-                    <option value="">Month</option>
-                    {Array.from({ length: 12 }, (_, i) => (
-                      <option key={i + 1} value={String(i + 1).padStart(2, '0')}>
-                        {String(i + 1).padStart(2, '0')}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={profileData.birthday.year}
-                    onChange={(e) => handleBirthdayChange('year', e.target.value)}
-                    className="form-input birthday-select"
-                  >
-                    <option value="">Year</option>
-                    {Array.from({ length: 80 }, (_, i) => (
-                      <option key={2024 - i} value={2024 - i}>
-                        {2024 - i}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">GENDER</label>
-                <select
-                  value={profileData.gender}
-                  onChange={(e) => handleProfileChange('gender', e.target.value)}
-                  className="form-input"
-                >
-                  <option value="">Select Gender</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-
-              <div className="form-group full-width">
-                <label className="form-label">USER ID</label>
-                <input
-                  type="text"
-                  value={profileData.userId}
-                  onChange={(e) => handleProfileChange('userId', e.target.value)}
-                  className="form-input"
-                  placeholder="yourname/companybrandname/userid"
+                  placeholder="Enter your email address"
                 />
               </div>
             </div>
 
-            <button className="save-btn" onClick={handleSaveProfile}>
-              SAVE CHANGES
+            <button 
+              className="save-btn" 
+              onClick={handleSaveProfile}
+              disabled={loading}
+            >
+              {loading ? 'SAVING...' : 'SAVE CHANGES'}
             </button>
           </div>
 
@@ -234,38 +321,45 @@ const Profile = ({ onBack }) => {
             
             <div className="password-form">
               <div className="form-group">
-                <label className="form-label">CURRENT PASSWORD</label>
+                <label className="form-label required">CURRENT PASSWORD</label>
                 <input
                   type="password"
                   value={passwordData.currentPassword}
                   onChange={(e) => handlePasswordChange('currentPassword', e.target.value)}
                   className="form-input"
+                  placeholder="Enter your current password to make changes"
                 />
               </div>
 
               <div className="password-row">
                 <div className="form-group">
-                  <label className="form-label">NEW PASSWORD</label>
+                  <label className="form-label required">NEW PASSWORD</label>
                   <input
                     type="password"
                     value={passwordData.newPassword}
                     onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
                     className="form-input"
+                    placeholder="Enter new password (min 6 characters)"
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">CONFIRM PASSWORD</label>
+                  <label className="form-label required">CONFIRM PASSWORD</label>
                   <input
                     type="password"
                     value={passwordData.confirmPassword}
                     onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
                     className="form-input"
+                    placeholder="Confirm new password"
                   />
                 </div>
               </div>
 
-              <button className="save-btn" onClick={handleSavePassword}>
-                SAVE CHANGES
+              <button 
+                className="save-btn" 
+                onClick={handleSavePassword}
+                disabled={loading}
+              >
+                {loading ? 'SAVING...' : 'SAVE CHANGES'}
               </button>
 
               <p className="password-note">
