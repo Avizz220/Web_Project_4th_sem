@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './Dashboard.css';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import Reports from '../Reports/Reports';
 import MedicineGroups from '../MedicineGroups/MedicineGroups';
 import PaymentReport from '../PaymentReport/PaymentReport';
@@ -10,8 +12,18 @@ import Customers from '../Customers/Customers';
 import Suppliers from '../Suppliers/Suppliers';
 import AboutUs from '../AboutUs/AboutUs';
 import { FiLogOut, FiUser } from 'react-icons/fi';
+import { useSweetDialog } from '../SweetDialog/SweetDialog';
 
 const Dashboard = ({ onLogout }) => {
+  // Sweet Dialog Hook
+  const { 
+    showSuccess, 
+    showError, 
+    showWarning,
+    showConfirm,
+    DialogComponent 
+  } = useSweetDialog();
+
   const [selectedMonth, setSelectedMonth] = useState('January 2022');
   const [searchQuery, setSearchQuery] = useState('');
   const [inventoryDropdownOpen, setInventoryDropdownOpen] = useState(false);
@@ -159,27 +171,28 @@ const Dashboard = ({ onLogout }) => {
       
       if (data.success) {
         const sales = data.sales || [];
-        const totalRevenue = sales.reduce((sum, sale) => sum + (sale.totalAmount || 0), 0);
-        const totalQuantitySold = sales.reduce((sum, sale) => sum + (sale.quantity || 0), 0);
+        const totalRevenue = sales.reduce((sum, sale) => sum + (sale.amount || 0), 0);
         
-        // Find most frequently sold item
+        // Count sales by saleType to find most frequently sold type
         let mostFrequentItem = 'No sales data';
         if (sales.length > 0) {
-          const itemFrequency = {};
+          const saleTypeFrequency = {};
           sales.forEach(sale => {
-            const itemName = sale.medicineName || sale.itemName || 'Unknown Item';
-            itemFrequency[itemName] = (itemFrequency[itemName] || 0) + (sale.quantity || 0);
+            const saleType = sale.saleType || 'Unknown';
+            saleTypeFrequency[saleType] = (saleTypeFrequency[saleType] || 0) + 1;
           });
           
-          const entries = Object.entries(itemFrequency);
+          const entries = Object.entries(saleTypeFrequency);
           if (entries.length > 0) {
-            mostFrequentItem = entries.reduce((a, b) => a[1] > b[1] ? a : b)[0];
+            const mostFrequentType = entries.reduce((a, b) => a[1] > b[1] ? a : b)[0];
+            // Format the display name
+            mostFrequentItem = mostFrequentType.charAt(0).toUpperCase() + mostFrequentType.slice(1).toLowerCase();
           }
         }
         
         setDashboardStats(prev => ({
           ...prev,
-          medicinesSold: totalQuantitySold,
+          medicinesSold: sales.filter(sale => sale.saleType && sale.saleType.toLowerCase() === 'medicine').length,
           invoicesGenerated: sales.length,
           frequentlyBoughtItem: mostFrequentItem
         }));
@@ -240,9 +253,15 @@ const Dashboard = ({ onLogout }) => {
       const data = await response.json();
       
       if (data.success) {
+        const equipment = data.equipment || [];
+        // Calculate total quantity of all equipment
+        const totalEquipmentQuantity = equipment.reduce((sum, item) => {
+          return sum + (item.noOfEquipments || 0);
+        }, 0);
+        
         setDashboardStats(prev => ({
           ...prev,
-          totalEquipment: (data.equipment || []).length
+          totalEquipment: totalEquipmentQuantity
         }));
       }
     } catch (err) {
@@ -320,18 +339,36 @@ const Dashboard = ({ onLogout }) => {
   };
 
   // Handle logout functionality
-  const handleLogout = () => {
-    // Confirm logout
-    const confirmLogout = window.confirm('Are you sure you want to logout?');
-    if (confirmLogout) {
-      // Clear any stored user data (if you have localStorage/sessionStorage)
-      localStorage.removeItem('userToken');
-      localStorage.removeItem('userData');
+  const handleLogout = async () => {
+    try {
+      // Show confirmation dialog using SweetDialog
+      const result = await showConfirm(
+        'Are you sure you want to logout?',
+        'You will be redirected to the login page.',
+        'Logout Confirmation'
+      );
       
-      // Call the onLogout function passed from parent component
-      if (onLogout) {
-        onLogout();
+      if (result) {
+        // Clear any stored user data
+        localStorage.removeItem('userToken');
+        localStorage.removeItem('userData');
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userInfo');
+        
+        // Show success message
+        showSuccess('Successfully logged out!', 'Goodbye');
+        
+        // Small delay to show the success message
+        setTimeout(() => {
+          // Call the onLogout function passed from parent component
+          if (onLogout) {
+            onLogout();
+          }
+        }, 1000);
       }
+    } catch (error) {
+      console.error('Error during logout:', error);
+      showError('An error occurred during logout. Please try again.', 'Logout Error');
     }
   };
 
@@ -342,11 +379,9 @@ const Dashboard = ({ onLogout }) => {
       return "Good Morning";
     } else if (hour >= 12 && hour < 17) {
       return "Good Afternoon";
-    } else if (hour >= 17 && hour < 21) {
+    } else  {
       return "Good Evening";
-    } else {
-      return "Good Night";
-    }
+    } 
   };
 
   // Current date formatting
@@ -366,8 +401,179 @@ const Dashboard = ({ onLogout }) => {
     setSearchQuery(e.target.value);
   };
 
-  const handleDownloadReport = () => {
-    console.log('Downloading report...');
+  const handleDownloadReport = async () => {
+    try {
+      console.log('Generating Dashboard Report PDF...');
+      
+      // Create new PDF document
+      const doc = new jsPDF();
+      
+      // Set document properties
+      const pageWidth = doc.internal.pageSize.width;
+      const pageHeight = doc.internal.pageSize.height;
+      
+      // Add header with pharmacy branding
+      doc.setFontSize(24);
+      doc.setTextColor(34, 197, 94);
+      doc.text(' CRYSTAL PHARMACY MANAGEMENT SYSTEM', pageWidth / 2, 20, { align: 'center' });
+      
+      doc.setFontSize(18);
+      doc.setTextColor(40, 40, 40);
+      doc.text(' Dashboard Summary Report', pageWidth / 2, 35, { align: 'center' });
+      
+      // Add report date and time
+      doc.setFontSize(12);
+      doc.setTextColor(100, 100, 100);
+      const currentDate = new Date().toLocaleString();
+      doc.text(`Generated on: ${currentDate}`, pageWidth / 2, 45, { align: 'center' });
+      doc.text(`Report by: ${userInfo.fullName} (${userInfo.role})`, pageWidth / 2, 52, { align: 'center' });
+      
+      // Add separator line
+      doc.setLineWidth(0.5);
+      doc.setDrawColor(200, 200, 200);
+      doc.line(20, 60, pageWidth - 20, 60);
+      
+      // Start content position
+      let yPosition = 75;
+      
+      // Key Performance Indicators Section
+      doc.setFontSize(16);
+      doc.setTextColor(34, 197, 94);
+      doc.text('Key Performance Indicators', 20, yPosition);
+      yPosition += 15;
+      
+      // Create KPI table data
+      const kpiData = [
+        [' Total Revenue', formatCurrency(dashboardStats.totalPayments)],
+        [' Total Medicines', formatNumber(dashboardStats.totalMedicines)],
+        [' Total Customers', formatNumber(dashboardStats.totalCustomers)],
+        [' Total Suppliers', formatNumber(dashboardStats.totalSuppliers)],
+        [' Total Equipment', formatNumber(dashboardStats.totalEquipment)],
+        [' Medicines Sold', formatNumber(dashboardStats.medicinesSold)],
+        [' Invoices Generated', formatNumber(dashboardStats.invoicesGenerated)],
+        [' Inventory Status', dashboardStats.inventoryStatus],
+        [' Medicine Shortage', dashboardStats.medicineShortage < 5 ? 'No Shortage' : formatNumber(dashboardStats.medicineShortage)],
+        [' Most Popular Item', dashboardStats.frequentlyBoughtItem]
+      ];
+      
+      // Add KPI table
+      autoTable(doc, {
+        startY: yPosition,
+        head: [['Metric', 'Value']],
+        body: kpiData,
+        theme: 'striped',
+        headStyles: {
+          fillColor: [34, 197, 94],
+          textColor: [255, 255, 255],
+          fontSize: 12,
+          fontStyle: 'bold'
+        },
+        bodyStyles: {
+          fontSize: 11,
+          textColor: [60, 60, 60]
+        },
+        alternateRowStyles: {
+          fillColor: [249, 250, 251]
+        },
+        margin: { left: 20, right: 20 },
+        columnStyles: {
+          0: { cellWidth: 80, fontStyle: 'bold' },
+          1: { cellWidth: 80, halign: 'center' }
+        }
+      });
+      
+      // Update y position after table
+      yPosition = doc.lastAutoTable.finalY + 20;
+      
+      // Business Insights Section
+      doc.setFontSize(16);
+      doc.setTextColor(34, 197, 94);
+      doc.text(' Business Insights', 20, yPosition);
+      yPosition += 15;
+      
+      // Calculate insights
+      const insights = [];
+      
+      // Revenue per customer
+      const revenuePerCustomer = dashboardStats.totalCustomers > 0 ? 
+        dashboardStats.totalPayments / dashboardStats.totalCustomers : 0;
+      insights.push(` Average revenue per customer: ${formatCurrency(revenuePerCustomer)}`);
+      
+      // Inventory utilization
+      const medicinesPerSupplier = dashboardStats.totalSuppliers > 0 ? 
+        dashboardStats.totalMedicines / dashboardStats.totalSuppliers : 0;
+      insights.push(` Average medicines per supplier: ${medicinesPerSupplier.toFixed(1)}`);
+      
+      // Sales efficiency
+      const salesEfficiency = dashboardStats.totalMedicines > 0 ? 
+        (dashboardStats.medicinesSold / dashboardStats.totalMedicines * 100) : 0;
+      insights.push(` Sales efficiency: ${salesEfficiency.toFixed(1)}% of inventory sold`);
+      
+      // Inventory health
+      if (dashboardStats.inventoryStatus === 'Good') {
+        insights.push(` Inventory status is healthy with minimal shortages`);
+      } else if (dashboardStats.inventoryStatus === 'Warning') {
+        insights.push(` Inventory requires attention - some items running low`);
+      } else {
+        insights.push(` Critical inventory shortage - immediate restocking needed`);
+      }
+      
+      // Customer engagement
+      if (dashboardStats.frequentlyBoughtItem !== 'Loading...' && 
+          dashboardStats.frequentlyBoughtItem !== 'No sales data') {
+        insights.push(` "${dashboardStats.frequentlyBoughtItem}" is the most popular item`);
+      }
+      
+      // Add insights to PDF
+      doc.setFontSize(11);
+      doc.setTextColor(60, 60, 60);
+      
+      insights.forEach((insight, index) => {
+        const lines = doc.splitTextToSize(insight, pageWidth - 50);
+        doc.text(lines, 25, yPosition);
+        yPosition += lines.length * 6 + 3;
+      });
+      
+      // Check if we need a new page
+      if (yPosition > pageHeight - 50) {
+        doc.addPage();
+        yPosition = 30;
+      }
+      
+      // Summary Section
+      yPosition += 10;
+      doc.setFontSize(16);
+      doc.setTextColor(34, 197, 94);
+      doc.text('Executive Summary', 20, yPosition);
+      yPosition += 15;
+      
+      doc.setFontSize(11);
+      doc.setTextColor(60, 60, 60);
+      
+      const summaryText = `Crystal Pharmacy is currently managing ${formatNumber(dashboardStats.totalMedicines)} medicines with ${formatNumber(dashboardStats.totalCustomers)} active customers and ${formatNumber(dashboardStats.totalSuppliers)} suppliers. The business has generated ${formatCurrency(dashboardStats.totalPayments)} in total revenue with ${formatNumber(dashboardStats.invoicesGenerated)} invoices processed. The inventory status is ${dashboardStats.inventoryStatus.toLowerCase()}, and the most popular item among customers is "${dashboardStats.frequentlyBoughtItem}".`;
+      
+      const summaryLines = doc.splitTextToSize(summaryText, pageWidth - 40);
+      doc.text(summaryLines, 20, yPosition);
+      yPosition += summaryLines.length * 6 + 15;
+      
+      // Footer
+      const footerY = pageHeight - 20;
+      doc.setFontSize(9);
+      doc.setTextColor(128, 128, 128);
+      doc.text('Crystal Pharmacy Management System - Confidential Dashboard Report', pageWidth / 2, footerY, { align: 'center' });
+      doc.text(`Page 1 of 1 | Generated: ${currentDate}`, pageWidth / 2, footerY + 5, { align: 'center' });
+      
+      // Save the PDF
+      const fileName = `Crystal_Pharmacy_Dashboard_Report_${new Date().toISOString().split('T')[0]}_${new Date().getTime()}.pdf`;
+      console.log('Saving Dashboard PDF as:', fileName);
+      doc.save(fileName);
+      
+      console.log('Dashboard PDF generated successfully');
+      
+    } catch (error) {
+      console.error('Error generating Dashboard PDF:', error);
+      alert('❌ Failed to generate Dashboard PDF. Please try again.\nError: ' + error.message);
+    }
   };  // Render Reports component if current view is reports
   if (currentView === 'reports') {
     return <Reports onBack={navigateToDashboard} />;
@@ -389,7 +595,7 @@ const Dashboard = ({ onLogout }) => {
 
   // Render Profile component if current view is profile
   if (currentView === 'profile') {
-    return <Profile onBack={navigateToDashboard} />;
+    return <Profile onBack={navigateToDashboard} onLogout={onLogout} />;
   }
   
   // Render Equipment Stock component if current view is equipment-stock
@@ -533,16 +739,7 @@ const Dashboard = ({ onLogout }) => {
         {/* Header */}
         <header className="dashboard-header">
           <div className="header-left">
-            <div className="search-container">
-              <input
-                type="text"
-                placeholder="Search for anything here..."
-                value={searchQuery}
-                onChange={handleSearch}
-                className="search-input"
-              />
-              <button className="search-btn">🔍</button>
-            </div>
+           
           </div>
           <div className="header-right">
             <div className="language-selector">
@@ -608,7 +805,7 @@ const Dashboard = ({ onLogout }) => {
               <div className="stat-icon">💰</div>
               <div className="stat-content">
                 <h3>{loading ? 'Loading...' : formatCurrency(dashboardStats.totalPayments)}</h3>
-                <p>Total Payments • {selectedMonth} ▼</p>
+                <p>Total Payments </p>
               </div>
             </div>
 
@@ -673,15 +870,7 @@ const Dashboard = ({ onLogout }) => {
               <div className="quick-report-section">
                 <div className="section-header">
                   <h2>Quick Report</h2>
-                  <select
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="month-selector"
-                  >
-                    <option>January 2022</option>
-                    <option>February 2022</option>
-                    <option>March 2022</option>
-                  </select>
+
                 </div>
                 <div className="report-stats">
                   <div className="report-item">
@@ -714,6 +903,9 @@ const Dashboard = ({ onLogout }) => {
           </div>
         </div>
       </div>
+
+      {/* Sweet Dialog Component */}
+      <DialogComponent />
     </div>
   );
 };

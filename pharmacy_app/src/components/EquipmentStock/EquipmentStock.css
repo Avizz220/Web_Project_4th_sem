@@ -884,3 +884,41 @@
     gap: 0.5rem;
   }
 }
+
+/* Permission-related styles */
+.user-role {
+  color: #6b7280;
+  font-size: 0.8rem;
+  font-weight: normal;
+  margin-left: 0.5rem;
+}
+
+.no-permissions-message {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 0.5rem 0;
+  text-align: center;
+}
+
+.no-permissions-message p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.permission-info {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+  text-align: center;
+}
+
+.permission-info p {
+  margin: 0;
+  color: #92400e;
+  font-size: 0.9rem;
+}

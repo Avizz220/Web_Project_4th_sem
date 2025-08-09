@@ -25,7 +25,7 @@ public class EquipmentController {
     
     // Create new equipment
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER') or hasRole('PHARMACIST')")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN') or hasRole('MANAGER') or hasRole('PHARMACIST')")
     public ResponseEntity<?> createEquipment(@Valid @RequestBody EquipmentRequest request) {
         try {
             EquipmentResponse equipment = equipmentService.createEquipment(request);
@@ -98,7 +98,7 @@ public class EquipmentController {
     
     // Update equipment
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER') or hasRole('PHARMACIST')")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN') or hasRole('MANAGER') or hasRole('PHARMACIST')")
     public ResponseEntity<?> updateEquipment(@PathVariable Long id, @Valid @RequestBody EquipmentRequest request) {
         try {
             EquipmentResponse equipment = equipmentService.updateEquipment(id, request);
@@ -120,7 +120,7 @@ public class EquipmentController {
     
     // Delete equipment
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN') or hasRole('MANAGER') or hasRole('PHARMACIST')")
     public ResponseEntity<?> deleteEquipment(@PathVariable Long id) {
         try {
             equipmentService.deleteEquipment(id);

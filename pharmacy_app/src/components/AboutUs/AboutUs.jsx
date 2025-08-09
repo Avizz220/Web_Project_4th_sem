@@ -250,21 +250,7 @@ const AboutUs = ({ onBack }) => {
           </div>
         </div>
 
-        {/* CTA Section */}
-        <div className="cta-section">
-          <div className="cta-content">
-            <h2>Ready to Experience Better Healthcare?</h2>
-            <p>Join thousands of satisfied customers who trust Crystal Pharmacy for their health needs.</p>
-            <div className="cta-buttons">
-              <button className="cta-btn primary" onClick={() => navigate('/dashboard')}>
-                Explore Services
-              </button>
-              <button className="cta-btn secondary" onClick={() => navigate('/contact')}>
-                Contact Us
-              </button>
-            </div>
-          </div>
-        </div>
+     
       </div>
     </div>
   );

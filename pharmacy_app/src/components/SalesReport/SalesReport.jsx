@@ -1,10 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import './SalesReport.css';
-import { FiSearch, FiPackage, FiPlus, FiX, FiEdit, FiTrash2, FiDollarSign } from 'react-icons/fi';
+import { FiSearch, FiPackage, FiPlus, FiX, FiEdit, FiTrash2, FiDollarSign, FiDownload } from 'react-icons/fi';
 import { HiChevronLeft, HiChevronRight } from 'react-icons/hi';
 import { BsArrowUp, BsArrowDown, BsSun, BsMoon, BsCloud } from 'react-icons/bs';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { useSweetDialog } from '../SweetDialog/SweetDialog';
 
 const SalesReport = ({ onBack }) => {
+  // Sweet Dialog Hook
+  const { 
+    showSuccess, 
+    showError, 
+    showDeleteSuccess, 
+    showUpdateSuccess, 
+    showAddSuccess,
+    showWarning,
+    DialogComponent 
+  } = useSweetDialog();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [sortOption, setSortOption] = useState('newest');
@@ -38,6 +52,7 @@ const SalesReport = ({ onBack }) => {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
 
   // Fetch sales from API
   const fetchSales = async () => {
@@ -163,14 +178,14 @@ const SalesReport = ({ onBack }) => {
       console.log('Delete response:', result);
       
       if (result.success) {
-        alert(`Sale deleted successfully!`);
+        showDeleteSuccess(`Sale #${selectedSale.saleId}`);
         await fetchSales();
       } else {
-        alert(`Failed to delete sale: ${result.message}`);
+        showError(`Failed to delete sale: ${result.message}`, 'Delete Failed');
       }
     } catch (error) {
       console.error('Error deleting sale:', error);
-      alert('Failed to connect to server');
+      showError('Failed to connect to server', 'Connection Error');
     } finally {
       setIsDeleteModalOpen(false);
       setSelectedSale(null);
@@ -255,7 +270,11 @@ const SalesReport = ({ onBack }) => {
         const data = await response.json();
 
         if (data.success) {
-          alert(`Sale ${isEditMode ? 'updated' : 'added'} successfully!`);
+          if (isEditMode) {
+            showUpdateSuccess(`Sale #${selectedSale.saleId}`);
+          } else {
+            showAddSuccess(`New sale for ${saleData.customer}`);
+          }
           
           // Refresh the sales list
           await fetchSales();
@@ -380,6 +399,188 @@ const SalesReport = ({ onBack }) => {
     return filtered;
   };
 
+  // PDF Export Function
+  const exportToPDF = async () => {
+    try {
+      setIsExporting(true);
+      console.log('Starting Sales PDF export...');
+      
+      const filteredSales = getFilteredSales();
+      console.log('Filtered sales data:', filteredSales);
+      
+      // Validation check
+      if (!filteredSales || filteredSales.length === 0) {
+        showWarning('No Sales Data', 'No sales data available to export. Please ensure you have sales records.');
+        return;
+      }
+      
+      // Create new PDF document
+      const doc = new jsPDF();
+      
+      // Set document properties
+      const pageWidth = doc.internal.pageSize.width;
+      const pageHeight = doc.internal.pageSize.height;
+      
+      // Add header with pharmacy branding
+      doc.setFontSize(24);
+      doc.setTextColor(34, 197, 94);
+      doc.text(' PHARMACY MANAGEMENT SYSTEM', pageWidth / 2, 20, { align: 'center' });
+      
+      doc.setFontSize(18);
+      doc.setTextColor(40, 40, 40);
+      doc.text('Sales Report', pageWidth / 2, 30, { align: 'center' });
+      
+      // Add generation date and filter info
+      doc.setFontSize(10);
+      doc.setTextColor(128, 128, 128);
+      const currentDate = new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      doc.text(`Generated on: ${currentDate}`, pageWidth / 2, 38, { align: 'center' });
+      
+      // Add filter information
+      let filterText = `Filters Applied: Tab: ${activeTab}, Sort: ${sortOption}`;
+      if (saleSearchQuery) {
+        filterText += `, Search: "${saleSearchQuery}"`;
+      }
+      doc.text(filterText, pageWidth / 2, 44, { align: 'center' });
+
+      // Prepare table data
+      const tableData = filteredSales.map(sale => [
+        sale.saleId || 'N/A',
+        sale.saleType || 'N/A',
+        sale.date ? new Date(sale.date).toLocaleDateString() : 'N/A',
+        sale.customer || 'N/A',
+        `$${parseFloat(sale.amount || 0).toFixed(2)}`,
+        sale.status || 'N/A'
+      ]);
+
+      // Add main table
+      const tableResult = autoTable(doc, {
+        head: [['Sale ID', 'Sale Type', 'Date', 'Customer', 'Amount', 'Status']],
+        body: tableData,
+        startY: 52,
+        styles: {
+          fontSize: 8,
+          cellPadding: 3,
+          halign: 'center',
+          valign: 'middle'
+        },
+        headStyles: {
+          fillColor: [34, 197, 94],
+          textColor: 255,
+          fontStyle: 'bold',
+          halign: 'center'
+        },
+        alternateRowStyles: {
+          fillColor: [240, 253, 244]
+        },
+        columnStyles: {
+          0: { halign: 'center' },
+          1: { halign: 'left' },
+          2: { halign: 'center' },
+          3: { halign: 'left' },
+          4: { halign: 'right', fontStyle: 'bold' },
+          5: { halign: 'center' }
+        },
+        margin: { left: 10, right: 10 }
+      });
+
+      // Calculate summary statistics
+      const summaryY = doc.lastAutoTable.finalY + 15;
+      
+      // Add summary section header
+      doc.setFontSize(16);
+      doc.setTextColor(34, 197, 94);
+      doc.text('📊 Sales Summary & Statistics', 15, summaryY);
+      
+      // Calculate statistics
+      const totalSales = sales.length;
+      const filteredCount = filteredSales.length;
+      const totalAmount = sales.reduce((sum, sale) => sum + parseFloat(sale.amount || 0), 0);
+      const filteredAmount = filteredSales.reduce((sum, sale) => sum + parseFloat(sale.amount || 0), 0);
+      const avgSaleAmount = filteredSales.length > 0 ? filteredAmount / filteredSales.length : 0;
+      
+      // Sales by type
+      const medicineCount = sales.filter(s => s.saleType === 'Medicine').length;
+      const equipmentCount = sales.filter(s => s.saleType === 'Equipment').length;
+      const otherCount = sales.filter(s => s.saleType && s.saleType !== 'Medicine' && s.saleType !== 'Equipment').length;
+      
+      // Sales by status
+      const completedCount = sales.filter(s => s.status === 'Completed').length;
+      const pendingCount = sales.filter(s => s.status === 'Pending').length;
+      const cancelledCount = sales.filter(s => s.status === 'Cancelled').length;
+
+      const summaryData = [
+        [' Total Sales', totalSales.toString()],
+        [' Filtered Sales', filteredCount.toString()],
+        [' Total Revenue (All)', `$${totalAmount.toFixed(2)}`],
+        [' Filtered Revenue', `$${filteredAmount.toFixed(2)}`],
+        [' verage Sale Amount', `$${avgSaleAmount.toFixed(2)}`],
+        [' Medicine Sales', medicineCount.toString()],
+        [' Equipment Sales', equipmentCount.toString()],
+        [' Other Sales', otherCount.toString()],
+        [' Completed Sales', completedCount.toString()],
+        [' Pending Sales', pendingCount.toString()],
+        [' Cancelled Sales', cancelledCount.toString()],
+        [' Success Rate', `${totalSales > 0 ? Math.round((completedCount / totalSales) * 100) : 0}%`]
+      ];
+
+      const summaryResult = autoTable(doc, {
+        body: summaryData,
+        startY: summaryY + 8,
+        styles: {
+          fontSize: 11,
+          cellPadding: 5,
+          halign: 'left'
+        },
+        columnStyles: {
+          0: { 
+            fontStyle: 'bold', 
+            fillColor: [240, 253, 244], 
+            halign: 'left',
+            textColor: [34, 197, 94]
+          },
+          1: { 
+            textColor: [40, 40, 40], 
+            halign: 'right',
+            fontStyle: 'bold'
+          }
+        },
+        margin: { left: 15, right: 15 }
+      });
+
+      // Add footer
+      const footerY = pageHeight - 15;
+      doc.setFontSize(8);
+      doc.setTextColor(128, 128, 128);
+      doc.text('Pharmacy Management System - Confidential Sales Report', pageWidth / 2, footerY, { align: 'center' });
+      doc.text(`Page 1 of 1 | Total Records: ${filteredCount}`, pageWidth / 2, footerY + 5, { align: 'center' });
+      
+      // Save the PDF
+      const fileName = `Sales_Report_${new Date().toISOString().split('T')[0]}_${new Date().getTime()}.pdf`;
+      console.log('Saving Sales PDF as:', fileName);
+      doc.save(fileName);
+      
+      // Show success message
+      showSuccess(
+        'Export Successful', 
+        `✅ Sales report exported successfully!\n📁 File: ${fileName}\n📊 Records: ${filteredCount} sales\n💰 Total: $${filteredAmount.toFixed(2)}`
+      );
+      console.log('Sales PDF export completed successfully');
+      
+    } catch (error) {
+      console.error('Error generating Sales PDF:', error);
+      showError('Export Failed', '❌ Failed to generate Sales PDF. Please try again.\nError: ' + error.message);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="sales-container">
       {/* Header */}
@@ -413,9 +614,19 @@ const SalesReport = ({ onBack }) => {
               <p>Here are your sales statistics and data</p>
             </div>
           </div>
-          <button className="add-sale-btn" onClick={handleAddNewSale}>
-            <FiPlus style={{ marginRight: "0.5rem" }} /> Add New Sale
-          </button>
+          <div className="header-actions">
+            <button 
+              className="export-sales-btn" 
+              onClick={exportToPDF}
+              disabled={isExporting}
+            >
+              <FiDownload style={{ marginRight: "0.5rem" }} /> 
+              {isExporting ? 'Generating PDF...' : 'Export Report'}
+            </button>
+            <button className="add-sale-btn" onClick={handleAddNewSale}>
+              <FiPlus style={{ marginRight: "0.5rem" }} /> Add New Sale
+            </button>
+          </div>
         </div>
 
         {/* Search Sales */}
@@ -714,6 +925,9 @@ const SalesReport = ({ onBack }) => {
             </div>
           </div>
         )}
+
+        {/* Sweet Dialog Component */}
+        <DialogComponent />
       </div>
     </div>
   );

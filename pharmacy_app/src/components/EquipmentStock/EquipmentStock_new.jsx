@@ -3,13 +3,25 @@ import './EquipmentStock.css';
 import { FiSearch, FiPackage, FiPlus, FiX, FiEdit, FiTrash2, FiTool, FiEye, FiSettings } from 'react-icons/fi';
 import { HiChevronLeft, HiChevronRight } from 'react-icons/hi';
 import { BsArrowUp, BsArrowDown, BsSun, BsMoon, BsCloud } from 'react-icons/bs';
+import { equipmentAPI, userUtils } from '../../services/api';
+import { useSweetDialog } from '../SweetDialog/SweetDialog';
 
 const EquipmentStock = ({ onBack }) => {
+  // SweetDialog hook
+  const {
+    showSweetDialog,
+    SweetDialogComponent
+  } = useSweetDialog();
+
   // State management
   const [equipmentData, setEquipmentData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // User info
+  const [currentUser, setCurrentUser] = useState(null);
+  const [userRole, setUserRole] = useState(null);
   
   // Modal states
   const [showModal, setShowModal] = useState(false);
@@ -34,33 +46,26 @@ const EquipmentStock = ({ onBack }) => {
 
   // Fetch equipment data
   useEffect(() => {
+    // Get user info
+    const user = userUtils.getCurrentUser();
+    const role = userUtils.getUserRole();
+    setCurrentUser(user);
+    setUserRole(role);
+    
     fetchEquipment();
   }, []);
 
   const fetchEquipment = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
+      setError('');
       
-      if (!token) {
-        setError('Authentication required. Please login again.');
-        return;
-      }
-
-      const response = await fetch('http://localhost:8080/api/equipment?size=100', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      const data = await response.json();
+      const result = await equipmentAPI.getAll();
       
-      if (data.success) {
-        setEquipmentData(data.equipment || []);
-        setError('');
+      if (result.success) {
+        setEquipmentData(result.data.equipment || result.data || []);
       } else {
-        setError(data.message || 'Failed to fetch equipment data');
+        setError(result.error || 'Failed to fetch equipment data');
       }
     } catch (err) {
       console.error('Error fetching equipment:', err);
@@ -179,39 +184,32 @@ const EquipmentStock = ({ onBack }) => {
       return;
     }
     
+    // All users are now allowed to manage equipment
+    
     setIsSubmitting(true);
+    setError('');
     
     try {
-      const token = localStorage.getItem('authToken');
       const equipmentPayload = {
         equipmentName: formData.equipmentName.trim(),
         model: formData.model.trim(),
         noOfEquipments: parseInt(formData.noOfEquipments)
       };
 
-      const url = isEditing 
-        ? `http://localhost:8080/api/equipment/${currentEquipment.id}`
-        : 'http://localhost:8080/api/equipment';
-      
-      const method = isEditing ? 'PUT' : 'POST';
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(equipmentPayload)
-      });
-
-      const result = await response.json();
+      const result = isEditing 
+        ? await equipmentAPI.update(currentEquipment.id, equipmentPayload)
+        : await equipmentAPI.create(equipmentPayload);
 
       if (result.success) {
         await fetchEquipment(); // Refresh the list
         closeModal();
-        alert(`Equipment ${isEditing ? 'updated' : 'added'} successfully!`);
+        showSweetDialog({
+          type: 'success',
+          title: isEditing ? 'Equipment Updated' : 'Equipment Added',
+          message: `Equipment ${isEditing ? 'updated' : 'added'} successfully!`
+        });
       } else {
-        setError(result.message || `Failed to ${isEditing ? 'update' : 'add'} equipment`);
+        setError(result.error || `Failed to ${isEditing ? 'update' : 'add'} equipment`);
       }
     } catch (err) {
       console.error('Error submitting form:', err);
@@ -232,27 +230,29 @@ const EquipmentStock = ({ onBack }) => {
     if (!selectedEquipment) return;
     
     try {
-      const token = localStorage.getItem('authToken');
-      
-      const response = await fetch(`http://localhost:8080/api/equipment/${selectedEquipment.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      const result = await response.json();
+      const result = await equipmentAPI.delete(selectedEquipment.id);
 
       if (result.success) {
         await fetchEquipment(); // Refresh the list
-        alert('Equipment deleted successfully!');
+        showSweetDialog({
+          type: 'success',
+          title: 'Equipment Deleted',
+          message: 'Equipment deleted successfully!'
+        });
       } else {
-        alert(`Failed to delete equipment: ${result.message}`);
+        showSweetDialog({
+          type: 'error',
+          title: 'Delete Failed',
+          message: `Failed to delete equipment: ${result.error}`
+        });
       }
     } catch (err) {
       console.error('Error deleting equipment:', err);
-      alert('Failed to delete equipment. Please try again.');
+      showSweetDialog({
+        type: 'error',
+        title: 'Delete Failed',
+        message: 'Failed to delete equipment. Please try again.'
+      });
     } finally {
       setShowDeleteConfirm(false);
       setSelectedEquipment(null);
@@ -330,7 +330,14 @@ const EquipmentStock = ({ onBack }) => {
               <FiTool className="title-icon" />
               Equipment Stock Management
             </h1>
-            <p className="page-subtitle">Manage your medical equipment inventory</p>
+            <p className="page-subtitle">
+              Manage your medical equipment inventory
+              {currentUser && (
+                <span style={{ marginLeft: '10px', fontSize: '0.9em', color: '#666' }}>
+                  | Logged in as: {currentUser.fullName} ({userRole})
+                </span>
+              )}
+            </p>
           </div>
           <button className="add-equipment-btn" onClick={openAddModal}>
             <FiPlus className="btn-icon" />
@@ -560,6 +567,7 @@ const EquipmentStock = ({ onBack }) => {
           </div>
         </div>
       )}
+      {SweetDialogComponent}
     </div>
   );
 };

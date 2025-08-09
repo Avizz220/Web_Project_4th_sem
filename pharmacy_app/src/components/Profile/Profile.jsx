@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './Profile.css';
+import { useSweetDialog } from '../SweetDialog/SweetDialog';
 
-const Profile = ({ onBack }) => {
+const Profile = ({ onBack, onLogout }) => {
   // Set document title when component mounts
   useEffect(() => {
     document.title = "Application Settings | Crystal Pharmacy";
@@ -9,6 +10,15 @@ const Profile = ({ onBack }) => {
       document.title = "Crystal Pharmacy";
     };
   }, []);
+
+  // SweetDialog hook
+  const {
+    showDialog,
+    showSuccess,
+    showError,
+    showWarning,
+    DialogComponent
+  } = useSweetDialog();
 
   const [profileData, setProfileData] = useState({
     fullName: '',
@@ -132,7 +142,11 @@ const Profile = ({ onBack }) => {
 
   const handleSaveProfile = async () => {
     if (!profileData.fullName.trim() || !profileData.email.trim()) {
-      alert('Please fill in all required fields.');
+      showDialog({
+        type: 'warning',
+        title: 'Validation Error',
+        message: 'Please fill in all required fields.'
+      });
       return;
     }
 
@@ -142,7 +156,11 @@ const Profile = ({ onBack }) => {
       console.log('Save profile - Token found:', token ? 'Yes' : 'No');
       
       if (!token) {
-        alert('Authentication token not found. Please login again.');
+        showDialog({
+          type: 'error',
+          title: 'Authentication Error',
+          message: 'Authentication token not found. Please login again.'
+        });
         return;
       }
 
@@ -177,13 +195,25 @@ const Profile = ({ onBack }) => {
         localStorage.setItem('userInfo', JSON.stringify(updatedUserInfo));
         setUserInfo(updatedUserInfo);
         
-        alert('Profile updated successfully!');
+        showDialog({
+          type: 'success',
+          title: 'Success',
+          message: 'Profile updated successfully!'
+        });
       } else {
-        alert('Failed to update profile: ' + data.message);
+        showDialog({
+          type: 'error',
+          title: 'Update Failed',
+          message: 'Failed to update profile: ' + data.message
+        });
       }
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert('Failed to update profile. Please try again.');
+      showDialog({
+        type: 'error',
+        title: 'Update Failed',
+        message: 'Failed to update profile. Please try again.'
+      });
     } finally {
       setLoading(false);
     }
@@ -191,17 +221,17 @@ const Profile = ({ onBack }) => {
 
   const handleSavePassword = async () => {
     if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
-      alert('Please fill in all password fields.');
+      showWarning('Please fill in all password fields.', 'Validation Error');
       return;
     }
 
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert('New passwords do not match!');
+      showError('New passwords do not match!', 'Validation Error');
       return;
     }
 
     if (passwordData.newPassword.length < 6) {
-      alert('New password must be at least 6 characters long.');
+      showWarning('New password must be at least 6 characters long.', 'Validation Error');
       return;
     }
 
@@ -209,7 +239,7 @@ const Profile = ({ onBack }) => {
     try {
       const token = localStorage.getItem('authToken');
       if (!token) {
-        alert('Authentication token not found. Please login again.');
+        showError('Authentication token not found. Please login again.', 'Authentication Error');
         return;
       }
 
@@ -235,13 +265,32 @@ const Profile = ({ onBack }) => {
           newPassword: '',
           confirmPassword: ''
         });
-        alert('Password changed successfully! You will be asked to log in again with your new password after you save your changes.');
+        
+        // Show success message and then redirect to login
+        showSuccess(
+          'Your password has been updated successfully! 🎉\n\nYou will be automatically redirected to the login page in 3 seconds to sign in with your new password.',
+          'Password Changed Successfully!'
+        );
+
+        // Clear authentication data after a short delay to show the success message
+        setTimeout(() => {
+          // Clear all authentication related data
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('userInfo');
+          localStorage.removeItem('userToken');
+          localStorage.removeItem('userData');
+          
+          // Redirect to login page
+          if (onLogout) {
+            onLogout();
+          }
+        }, 3000); // 3 second delay to show the success message
       } else {
-        alert('Failed to change password: ' + data.message);
+        showError('Failed to change password: ' + data.message, 'Password Change Failed');
       }
     } catch (error) {
       console.error('Error changing password:', error);
-      alert('Failed to change password. Please try again.');
+      showError('Failed to change password. Please try again.', 'Password Change Failed');
     } finally {
       setLoading(false);
     }
@@ -369,6 +418,7 @@ const Profile = ({ onBack }) => {
           </div>
         </div>
       </div>
+      {DialogComponent()}
     </div>
   );
 };

@@ -3,8 +3,21 @@ import './EquipmentStock.css';
 import { FiSearch, FiPackage, FiPlus, FiX, FiEdit, FiTrash2, FiTool, FiEye, FiSettings } from 'react-icons/fi';
 import { HiChevronLeft, HiChevronRight } from 'react-icons/hi';
 import { BsArrowUp, BsArrowDown, BsSun, BsMoon, BsCloud } from 'react-icons/bs';
+import { useSweetDialog } from '../SweetDialog/SweetDialog';
+import { equipmentAPI } from '../../services/api';
 
 const EquipmentStock = ({ onBack }) => {
+  // Sweet Dialog Hook
+  const { 
+    showSuccess, 
+    showError, 
+    showDeleteSuccess, 
+    showUpdateSuccess, 
+    showAddSuccess,
+    showWarning,
+    DialogComponent 
+  } = useSweetDialog();
+
   // State management
   const [equipmentData, setEquipmentData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,6 +45,40 @@ const EquipmentStock = ({ onBack }) => {
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Helper function to get user role
+  const getUserRole = () => {
+    try {
+      const userInfo = localStorage.getItem('userInfo');
+      console.log('Raw user info from localStorage:', userInfo);
+      if (userInfo) {
+        const user = JSON.parse(userInfo);
+        console.log('Parsed user info:', user);
+        console.log('User role:', user.role);
+        return user.role || 'USER';
+      }
+    } catch (error) {
+      console.error('Error parsing user info:', error);
+    }
+    return 'USER';
+  };
+
+  // Helper function to check permissions - Now allows all authenticated users
+  const canCreateOrUpdate = () => {
+    const token = localStorage.getItem('authToken');
+    return !!token; // Allow if user is authenticated
+  };
+
+  const canDelete = () => {
+    const token = localStorage.getItem('authToken');
+    return !!token; // Allow if user is authenticated
+  };
+
+  // Show permission info message when no actions are available
+  const showPermissionInfo = () => {
+    // Since all users now have full permissions, no permission info needed
+    return null;
+  };
+
   // Fetch equipment data
   useEffect(() => {
     fetchEquipment();
@@ -43,29 +90,41 @@ const EquipmentStock = ({ onBack }) => {
       setError('');
 
       const token = localStorage.getItem('authToken');
+      const userInfo = localStorage.getItem('userInfo');
+      console.log('=== DEBUGGING FETCH EQUIPMENT ===');
+      console.log('Auth Token exists:', !!token);
+      console.log('User Info:', userInfo);
+      
       if (!token) {
         setError('Authentication required. Please login again.');
         setLoading(false);
         return;
       }
 
-      const response = await fetch('http://localhost:8080/api/equipment?size=100', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      console.log('Fetching equipment with token:', token ? 'Token exists' : 'No token');
 
-      console.log('Fetch response status:', response.status);
-      const data = await response.json();
-      console.log('Fetch response data:', data);
+      const result = await equipmentAPI.getAll(0, 100);
+      console.log('Equipment API result:', result);
       
-      if (data.success) {
-        setEquipmentData(data.equipment || []);
+      if (result.success) {
+        // Handle different response structures
+        const equipmentList = result.data.equipment || result.data.content || result.data || [];
+        setEquipmentData(equipmentList);
         setError('');
       } else {
-        setError(data.message || 'Failed to fetch equipment data');
+        console.error('Failed to fetch equipment:', result.error);
+        setError(result.error || 'Failed to fetch equipment data');
         setEquipmentData([]);
+        // If authentication error, redirect to login
+        if (result.error && (result.error.includes('Session expired') || result.error.includes('Access denied'))) {
+          // Handle session expiry or access denied
+          if (result.error.includes('Session expired')) {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userInfo');
+          }
+          // Show user-friendly error message
+          showError(result.error, 'Access Error');
+        }
       }
     } catch (err) {
       console.error('Error fetching equipment:', err);
@@ -79,6 +138,8 @@ const EquipmentStock = ({ onBack }) => {
   // Row click handler for action popup
   const handleRowClick = (equipment, event) => {
     event.stopPropagation();
+    
+    // Allow all users to access the action popup
     setSelectedEquipment(equipment);
     setShowActionPopup(true);
   };
@@ -199,8 +260,17 @@ const EquipmentStock = ({ onBack }) => {
     
     try {
       const token = localStorage.getItem('authToken');
+      const userInfo = localStorage.getItem('userInfo');
+      
+      console.log('=== DEBUGGING EQUIPMENT SUBMISSION ===');
+      console.log('Auth Token exists:', !!token);
+      console.log('Auth Token:', token);
+      console.log('User Info:', userInfo);
+      console.log('Parsed User Info:', userInfo ? JSON.parse(userInfo) : null);
+      
       if (!token) {
         setError('Authentication required. Please login again.');
+        showError('Authentication required. Please login again.', 'Authentication Error');
         setIsSubmitting(false);
         return;
       }
@@ -212,38 +282,53 @@ const EquipmentStock = ({ onBack }) => {
       };
 
       console.log('Submitting equipment data:', equipmentPayload);
+      console.log('Is editing?', isEditing);
 
-      const url = isEditing 
-        ? `http://localhost:8080/api/equipment/${currentEquipment.id}`
-        : 'http://localhost:8080/api/equipment';
-      
-      const method = isEditing ? 'PUT' : 'POST';
+      let result;
+      if (isEditing) {
+        console.log('Updating equipment with ID:', currentEquipment.id);
+        result = await equipmentAPI.update(currentEquipment.id, equipmentPayload);
+      } else {
+        console.log('Creating new equipment');
+        result = await equipmentAPI.create(equipmentPayload);
+      }
 
-      console.log(`${method} to:`, url);
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(equipmentPayload)
-      });
-
-      console.log('Response status:', response.status);
-      const result = await response.json();
-      console.log('Response result:', result);
+      console.log('API result:', result);
 
       if (result.success) {
-        alert(`Equipment ${isEditing ? 'updated' : 'added'} successfully!`);
+        console.log('Operation successful!');
+        if (isEditing) {
+          showUpdateSuccess(`Equipment ${formData.equipmentName}`);
+        } else {
+          showAddSuccess(`Equipment ${formData.equipmentName}`);
+        }
         await fetchEquipment(); // Refresh the list
         closeModal();
       } else {
-        setError(result.message || `Failed to ${isEditing ? 'update' : 'add'} equipment`);
+        console.error('Operation failed:', result.error);
+        // Show specific error message for access denied
+        let errorMessage = result.error || `Failed to ${isEditing ? 'update' : 'add'} equipment`;
+        let errorTitle = `${isEditing ? 'Update' : 'Add'} Failed`;
+        
+        if (result.error && result.error.includes('Access denied')) {
+          errorMessage = `Permission denied. Please ensure you are logged in with proper credentials.`;
+          errorTitle = 'Permission Denied';
+        }
+        
+        showError(errorMessage, errorTitle);
+        setError(errorMessage);
+        
+        // Handle authentication errors
+        if (result.error && result.error.includes('Session expired')) {
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('userInfo');
+        }
       }
     } catch (err) {
       console.error('Error submitting form:', err);
-      setError('Failed to save equipment. Please try again.');
+      const errorMessage = 'Failed to save equipment. Please try again.';
+      setError(errorMessage);
+      showError(errorMessage, 'Save Failed');
     } finally {
       setIsSubmitting(false);
     }
@@ -268,29 +353,37 @@ const EquipmentStock = ({ onBack }) => {
 
       console.log('Deleting equipment:', selectedEquipment);
       
-      const response = await fetch(`http://localhost:8080/api/equipment/${selectedEquipment.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      console.log('Delete response status:', response.status);
-      const result = await response.json();
-      console.log('Delete response result:', result);
+      const result = await equipmentAPI.delete(selectedEquipment.id);
+      console.log('Delete result:', result);
 
       if (result.success) {
-        alert('Equipment deleted successfully!');
+        showDeleteSuccess(`Equipment ${selectedEquipment.equipmentName}`);
         await fetchEquipment(); // Refresh the list
         setShowDeleteConfirm(false);
         setSelectedEquipment(null);
       } else {
-        setError(result.message || 'Failed to delete equipment');
+        // Show specific error message for access denied
+        let errorMessage = result.error || 'Failed to delete equipment';
+        let errorTitle = 'Delete Failed';
+        
+        if (result.error && result.error.includes('Access denied')) {
+          errorMessage = 'Permission denied. Please ensure you are logged in with proper credentials.';
+          errorTitle = 'Permission Denied';
+        }
+        
+        showError(errorMessage, errorTitle);
+        setError(errorMessage);
+        
+        // Handle authentication errors
+        if (result.error && result.error.includes('Session expired')) {
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('userInfo');
+        }
       }
     } catch (err) {
       console.error('Error deleting equipment:', err);
       setError('Failed to delete equipment. Please try again.');
+      showError('Failed to delete equipment. Please try again.', 'Delete Failed');
     } finally {
       setShowDeleteConfirm(false);
       setSelectedEquipment(null);
@@ -353,6 +446,7 @@ const EquipmentStock = ({ onBack }) => {
           <div className="greeting-container">
             <span className="greeting-icon">{greeting.icon}</span>
             <span className="greeting-text">{greeting.text}</span>
+            <span className="user-role">({getUserRole()})</span>
           </div>
           <div className="date-time">
             {getCurrentDate()}
@@ -379,11 +473,12 @@ const EquipmentStock = ({ onBack }) => {
         {/* Search Section */}
         <div className="equipment-search-section">
           <div className="equipment-search-container">
-            <FiSearch className="search-icon" />
+           
+            
             <input
               type="text"
               className="search-input"
-              placeholder="Search equipment by name or model..."
+              placeholder="     Search equipment by name or model..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -598,6 +693,9 @@ const EquipmentStock = ({ onBack }) => {
           </div>
         </div>
       )}
+
+      {/* Sweet Dialog Component */}
+      <DialogComponent />
     </div>
   );
 };

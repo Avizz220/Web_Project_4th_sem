@@ -4,9 +4,23 @@ import './blue-card.css';
 import './payment-update-modal.css';
 import { FiSearch, FiChevronLeft, FiDownload, FiCalendar, FiFilter, FiPieChart, FiEdit, FiTrash2, FiX } from 'react-icons/fi';
 import { HiOutlineCreditCard, HiOutlineCash, HiOutlineGlobe, HiOutlinePhone, HiOutlineRefresh, HiOutlineCurrencyDollar } from 'react-icons/hi';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { useSweetDialog } from '../SweetDialog/SweetDialog';
 
 const PaymentReport = ({ onBack }) => {
   console.log('PaymentReport component rendering...');
+  
+  // Sweet Dialog Hook
+  const { 
+    showSuccess, 
+    showError, 
+    showDeleteSuccess, 
+    showUpdateSuccess, 
+    showAddSuccess,
+    showWarning,
+    DialogComponent 
+  } = useSweetDialog();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -29,6 +43,7 @@ const PaymentReport = ({ onBack }) => {
   const [paymentData, setPaymentData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
 
   // API base URL
   const API_BASE_URL = 'http://localhost:8080/api/payments';
@@ -362,12 +377,12 @@ const PaymentReport = ({ onBack }) => {
       const result = await addPayment(newPaymentData);
       
       if (result.success) {
-        alert(`New payment to ${newPaymentData.supplier} has been added successfully!`);
+        showAddSuccess(`Payment to ${newPaymentData.supplier}`);
         // Close the form
         closeAddPaymentForm();
       } else {
         setError(result.error);
-        alert(`Failed to add payment: ${result.error}`);
+        showError(`Failed to add payment: ${result.error}`, 'Payment Addition Failed');
       }
     }
   };
@@ -391,6 +406,187 @@ const PaymentReport = ({ onBack }) => {
     const amount = Number(payment.amount || 0);
     return sum + amount;
   }, 0).toLocaleString('en-IN');
+
+  // PDF Export Function
+  const exportToPDF = async () => {
+    try {
+      setIsExporting(true);
+      console.log('Starting PDF export...');
+      console.log('Payment data:', safePaymentData);
+      
+      // Validation check
+      if (!safePaymentData || safePaymentData.length === 0) {
+        showWarning('No payment data available to export. Please ensure you have payment records.', 'Export Warning');
+        return;
+      }
+      
+      // Create new PDF document
+      const doc = new jsPDF();
+      
+      // Set document properties
+      const pageWidth = doc.internal.pageSize.width;
+      const pageHeight = doc.internal.pageSize.height;
+      
+      // Add header with pharmacy branding
+      doc.setFontSize(24);
+      doc.setTextColor(220, 38, 38);
+      doc.text(' PHARMACY MANAGEMENT SYSTEM', pageWidth / 2, 20, { align: 'center' });
+      
+      doc.setFontSize(18);
+      doc.setTextColor(40, 40, 40);
+      doc.text('Payment Report', pageWidth / 2, 30, { align: 'center' });
+      
+      // Add generation date and filter info
+      doc.setFontSize(10);
+      doc.setTextColor(128, 128, 128);
+      const currentDate = new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      doc.text(`Generated on: ${currentDate}`, pageWidth / 2, 38, { align: 'center' });
+      
+      // Add filter information
+      let filterText = `Filters Applied: Status: ${statusFilter}, Type: ${typeFilter}`;
+      if (searchQuery) {
+        filterText += `, Search: "${searchQuery}"`;
+      }
+      doc.text(filterText, pageWidth / 2, 44, { align: 'center' });
+      
+      // Prepare filtered table data
+      const filteredData = safePaymentData.filter(payment => {
+        const matchesSearch = payment.paymentBy?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            payment.paymentType?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            payment.id?.toString().includes(searchQuery);
+        const matchesStatus = statusFilter === 'all' || payment.status?.toLowerCase() === statusFilter;
+        const matchesType = typeFilter === 'all' || payment.paymentType?.toLowerCase() === typeFilter.toLowerCase();
+        return matchesSearch && matchesStatus && matchesType;
+      });
+
+      console.log('Filtered data for PDF:', filteredData);
+
+      const tableData = filteredData.map(payment => [
+        payment.id || 'N/A',
+        payment.paymentType || 'N/A',
+        payment.date ? formatDate(payment.date) : 'N/A',
+        payment.paymentBy || 'N/A',
+        `Rs. ${Number(payment.amount || 0).toLocaleString('en-IN')}`,
+        payment.status || 'N/A'
+      ]);
+
+      // Add table
+      const tableResult = autoTable(doc, {
+        head: [['Payment ID', 'Payment Type', 'Date', 'Payment By (Supplier)', 'Amount', 'Status']],
+        body: tableData,
+        startY: 52,
+        styles: {
+          fontSize: 8,
+          cellPadding: 3,
+          halign: 'center',
+          valign: 'middle'
+        },
+        headStyles: {
+          fillColor: [220, 38, 38],
+          textColor: 255,
+          fontStyle: 'bold',
+          halign: 'center'
+        },
+        alternateRowStyles: {
+          fillColor: [252, 248, 248]
+        },
+        columnStyles: {
+          0: { halign: 'center' },
+          1: { halign: 'left' },
+          2: { halign: 'center' },
+          3: { halign: 'left' },
+          4: { halign: 'right', fontStyle: 'bold' },
+          5: { halign: 'center' }
+        },
+        margin: { left: 10, right: 10 }
+      });
+
+      // Calculate summary statistics
+      const summaryY = doc.lastAutoTable.finalY + 15;
+      
+      // Add summary section header
+      doc.setFontSize(16);
+      doc.setTextColor(220, 38, 38);
+      doc.text('Payment Summary & Statistics', 15, summaryY);
+      
+      // Summary statistics
+      const totalAmountNum = safePaymentData.reduce((sum, payment) => {
+        const amount = Number(payment.amount || 0);
+        return sum + amount;
+      }, 0);
+
+      const filteredAmountNum = filteredData.reduce((sum, payment) => {
+        const amount = Number(payment.amount || 0);
+        return sum + amount;
+      }, 0);
+
+      const summaryData = [
+        [' Total Transactions', safePaymentData.length.toString()],
+        [' Filtered Transactions', filteredData.length.toString()],
+        [' Total Amount (All)', `Rs. ${totalAmountNum.toLocaleString('en-IN')}`],
+        [' Filtered Amount', `Rs. ${filteredAmountNum.toLocaleString('en-IN')}`],
+        [' Bank Transfers', bankTransfers.toString()],
+        [' Cash Payments', cashPayments.toString()],
+        [' Card Payments', cardPayments.toString()],
+        [' Digital Wallets', digitalWallets.toString()],
+        [' Pending Payments', pendingPayments.toString()],
+        [' Completed Payments', (safePaymentData.length - pendingPayments).toString()],
+        [' Success Rate', `${safePaymentData.length > 0 ? Math.round((safePaymentData.length - pendingPayments) / safePaymentData.length * 100) : 0}%`]
+      ];
+
+      const summaryResult = autoTable(doc, {
+        body: summaryData,
+        startY: summaryY + 8,
+        styles: {
+          fontSize: 11,
+          cellPadding: 5,
+          halign: 'left'
+        },
+        columnStyles: {
+          0: { 
+            fontStyle: 'bold', 
+            fillColor: [252, 248, 248], 
+            halign: 'left',
+            textColor: [220, 38, 38]
+          },
+          1: { 
+            textColor: [40, 40, 40], 
+            halign: 'right',
+            fontStyle: 'bold'
+          }
+        },
+        margin: { left: 15, right: 15 }
+      });
+
+      // Add footer
+      const footerY = pageHeight - 15;
+      doc.setFontSize(8);
+      doc.setTextColor(128, 128, 128);
+      doc.text('Pharmacy Management System - Confidential Report', pageWidth / 2, footerY, { align: 'center' });
+      doc.text(`Page 1 of 1 | Total Records: ${filteredData.length}`, pageWidth / 2, footerY + 5, { align: 'center' });
+      
+      // Save the PDF
+      const fileName = `Payment_Report_${new Date().toISOString().split('T')[0]}_${new Date().getTime()}.pdf`;
+      console.log('Saving PDF as:', fileName);
+      doc.save(fileName);
+      
+      // Show success message
+      showSuccess(`Payment report exported successfully! 📁 File: ${fileName} 📊 Records: ${filteredData.length} transactions 💰 Total: Rs. ${filteredAmountNum.toLocaleString('en-IN')}`, 'Export Successful! 🎉');
+      console.log('PDF export completed successfully');
+      
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      showError(`Failed to generate PDF. Please try again. Error: ${error.message}`, 'Export Failed');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   // Add new state for handling popup and forms
   const [selectedPayment, setSelectedPayment] = useState(null);
@@ -425,11 +621,11 @@ const PaymentReport = ({ onBack }) => {
     const result = await updatePayment(selectedPayment.paymentId, updateFormData);
     
     if (result.success) {
-      alert('Payment updated successfully!');
+      showUpdateSuccess(`Payment to ${updateFormData.supplier}`);
       setShowUpdateModal(false);
     } else {
       setError(result.error);
-      alert(`Failed to update payment: ${result.error}`);
+      showError(`Failed to update payment: ${result.error}`, 'Update Failed');
     }
   };
 
@@ -437,12 +633,12 @@ const PaymentReport = ({ onBack }) => {
     const result = await deletePayment(selectedPayment.paymentId);
     
     if (result.success) {
-      alert('Payment deleted successfully!');
+      showDeleteSuccess(`Payment to ${selectedPayment.supplier}`);
       setShowDeleteConfirm(false);
       setShowUpdateModal(false);
     } else {
       setError(result.error);
-      alert(`Failed to delete payment: ${result.error}`);
+      showError(`Failed to delete payment: ${result.error}`, 'Delete Failed');
     }
   };
 
@@ -559,8 +755,12 @@ const PaymentReport = ({ onBack }) => {
               </select>
             </div>
             
-            <button className="export-btn">
-              <FiDownload /> Export Report
+            <button 
+              className="export-btn" 
+              onClick={exportToPDF}
+              disabled={isExporting}
+            >
+              <FiDownload /> {isExporting ? 'Generating PDF...' : 'Export Report'}
             </button>
             
             <button className="add-payment-btn" onClick={openAddPaymentForm}>
@@ -1016,6 +1216,9 @@ const PaymentReport = ({ onBack }) => {
             </div>
           </div>
         )}
+
+        {/* Sweet Dialog Component */}
+        <DialogComponent />
       </div>
     </div>
   );

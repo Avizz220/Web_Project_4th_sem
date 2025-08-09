@@ -1,8 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import './MedicineGroups.css';
-import { FiSearch, FiPackage, FiPlus, FiX, FiEdit, FiTrash2, FiCalendar } from 'react-icons/fi';
+import { FiSearch, FiPackage, FiPlus, FiX, FiEdit, FiTrash2, FiCalendar, FiMoreVertical } from 'react-icons/fi';
+import { useSweetDialog } from '../SweetDialog/SweetDialog';
 
 const MedicineGroups = ({ onBack }) => {
+  // Sweet Dialog Hook
+  const { 
+    showSuccess, 
+    showError, 
+    showDeleteSuccess, 
+    showUpdateSuccess, 
+    showAddSuccess,
+    showWarning,
+    DialogComponent 
+  } = useSweetDialog();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [sortOption, setSortOption] = useState('newest');
@@ -71,11 +83,13 @@ const MedicineGroups = ({ onBack }) => {
       if (data.success) {
         setMedicines(data.medicines || []);
       } else {
+        showError(data.message || 'Failed to fetch medicines', 'Loading Error');
         setError(data.message || 'Failed to fetch medicines');
         setMedicines([]);
       }
     } catch (error) {
       console.error('Error fetching medicines:', error);
+      showError('Error connecting to server. Please make sure the backend is running.', 'Connection Error');
       setError('Error connecting to server. Please make sure the backend is running.');
       setMedicines([]);
     } finally {
@@ -229,11 +243,17 @@ const MedicineGroups = ({ onBack }) => {
 
       if (response.ok && data.success) {
         console.log(`Medicine ${isEditMode ? 'updated' : 'created'} successfully:`, data);
+        if (isEditMode) {
+          showUpdateSuccess(`Medicine ${medicineData.medicineName}`);
+        } else {
+          showAddSuccess(`Medicine ${medicineData.medicineName}`);
+        }
         await fetchMedicines(); // Refresh the list
         closeModal();
         setError('');
       } else {
         console.error(`Failed to ${isEditMode ? 'update' : 'create'} medicine:`, data);
+        showError(data.message || `Failed to ${isEditMode ? 'update' : 'create'} medicine`, `${isEditMode ? 'Update' : 'Creation'} Failed`);
         setError(data.message || `Failed to ${isEditMode ? 'update' : 'create'} medicine`);
       }
     } catch (error) {
@@ -248,12 +268,6 @@ const MedicineGroups = ({ onBack }) => {
   const handleActionClick = (e, medicine) => {
     e.stopPropagation();
     console.log('Action clicked for medicine:', medicine);
-    
-    const rect = e.currentTarget.getBoundingClientRect();
-    setPopupPosition({
-      x: rect.left,
-      y: rect.bottom + window.scrollY
-    });
     
     setSelectedMedicine(medicine);
     setActiveRowId(medicine.id);
@@ -327,14 +341,17 @@ const MedicineGroups = ({ onBack }) => {
 
       if (response.ok && data.success) {
         console.log('Medicine deleted successfully:', data);
+        showDeleteSuccess(`Medicine ${medicineToDelete.medicineName}`);
         await fetchMedicines();
         setError('');
       } else {
         console.error('Failed to delete medicine:', data);
+        showError(data.message || 'Failed to delete medicine', 'Delete Failed');
         setError(data.message || 'Failed to delete medicine');
       }
     } catch (error) {
       console.error('Error deleting medicine:', error);
+      showError('Error deleting medicine. Please try again.', 'Connection Error');
       setError('Error deleting medicine. Please try again.');
     } finally {
       setIsDeleteModalOpen(false);
@@ -616,8 +633,9 @@ const MedicineGroups = ({ onBack }) => {
                           <button
                             className="action-btn"
                             onClick={(e) => handleActionClick(e, medicine)}
+                            title="More actions"
                           >
-                            ⋮
+                            <FiMoreVertical />
                           </button>
                         </div>
                       </td>
@@ -642,31 +660,26 @@ const MedicineGroups = ({ onBack }) => {
 
       {/* Action Popup */}
       {showActionPopup && (
-        <>
-          <div className="popup-overlay" onClick={closeActionPopup}></div>
-          <div 
-            className="action-popup"
-            style={{
-              position: 'fixed',
-              left: `${popupPosition.x}px`,
-              top: `${popupPosition.y}px`,
-              zIndex: 1000
-            }}
-          >
-            <button 
-              className="popup-action update-action"
-              onClick={handleUpdateMedicine}
-            >
-              <FiEdit /> Update Medicine
-            </button>
-            <button 
-              className="popup-action delete-action"
-              onClick={handleDeleteClick}
-            >
-              <FiTrash2 /> Delete Medicine
-            </button>
+        <div className="action-popup-overlay" onClick={closeActionPopup}>
+          <div className="action-popup" onClick={(e) => e.stopPropagation()}>
+            <div className="popup-content">
+              <div className="popup-actions">
+                <button 
+                  className="btn-update"
+                  onClick={handleUpdateMedicine}
+                >
+                  <FiEdit /> Update
+                </button>
+                <button 
+                  className="btn-delete"
+                  onClick={handleDeleteClick}
+                >
+                  <FiTrash2 /> Delete
+                </button>
+              </div>
+            </div>
           </div>
-        </>
+        </div>
       )}
 
       {/* Add/Edit Medicine Modal */}
@@ -865,6 +878,9 @@ const MedicineGroups = ({ onBack }) => {
           </div>
         </div>
       )}
+
+      {/* Sweet Dialog Component */}
+      <DialogComponent />
     </div>
   );
 };

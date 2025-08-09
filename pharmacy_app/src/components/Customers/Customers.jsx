@@ -1,10 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import './Customers.css';
+import '../payment-style-popup.css';
 import { FiSearch, FiUsers, FiUserCheck, FiPlus, FiX, FiEdit, FiTrash2 } from 'react-icons/fi';
 import { HiChevronLeft, HiChevronRight } from 'react-icons/hi';
 import { BsArrowUp, BsArrowDown, BsSun, BsMoon, BsCloud } from 'react-icons/bs';
+import { useSweetDialog } from '../SweetDialog/SweetDialog';
 
 const Customers = ({ onBack }) => {
+  // Sweet Dialog Hook
+  const { 
+    showSuccess, 
+    showError, 
+    showDeleteSuccess, 
+    showUpdateSuccess, 
+    showAddSuccess,
+    DialogComponent 
+  } = useSweetDialog();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [sortOption, setSortOption] = useState('newest');
@@ -18,7 +30,6 @@ const Customers = ({ onBack }) => {
   
   // Action popup state
   const [showActionPopup, setShowActionPopup] = useState(false);
-  const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
   const [activeRowId, setActiveRowId] = useState(null);
   
   // Form state
@@ -144,7 +155,7 @@ const Customers = ({ onBack }) => {
     setIsModalOpen(true);
   };
   
-  const handleDeleteClick = (customer) => {
+  const handleDeleteClickOld = (customer) => {
     console.log('Delete click - customer:', customer);
     setSelectedCustomer(customer);
     setIsDeleteModalOpen(true);
@@ -172,16 +183,16 @@ const Customers = ({ onBack }) => {
       console.log('Delete response:', result);
       
       if (result.success) {
-        alert(`Customer ${selectedCustomer.customerName} deleted successfully!`);
+        showDeleteSuccess(`Customer ${selectedCustomer.customerName}`);
         
         // Refresh the customer list
         await fetchCustomers();
       } else {
-        alert(`Failed to delete customer: ${result.message}`);
+        showError(`Failed to delete customer: ${result.message}`, 'Delete Failed');
       }
     } catch (error) {
       console.error('Error deleting customer:', error);
-      alert('Failed to connect to server');
+      showError('Failed to connect to server', 'Connection Error');
     } finally {
       setIsDeleteModalOpen(false);
       setSelectedCustomer(null);
@@ -286,7 +297,11 @@ const Customers = ({ onBack }) => {
         console.log('Response result:', result);
         
         if (result.success) {
-          alert(`Customer ${formData.name} ${isEditMode ? 'updated' : 'added'} successfully!`);
+          if (isEditMode) {
+            showUpdateSuccess(`Customer ${formData.name}`);
+          } else {
+            showAddSuccess(`Customer ${formData.name}`);
+          }
           
           // Refresh the customer list
           await fetchCustomers();
@@ -315,13 +330,6 @@ const Customers = ({ onBack }) => {
 
   const handleRowClick = (customer, e) => {
     e.preventDefault();
-    
-    // Calculate position for the popup
-    const rect = e.currentTarget.getBoundingClientRect();
-    setPopupPosition({
-      x: rect.left + window.scrollX + rect.width / 2,
-      y: rect.top + window.scrollY
-    });
     
     setSelectedCustomer(customer);
     setShowActionPopup(true);
@@ -762,55 +770,32 @@ const Customers = ({ onBack }) => {
       
       {/* Action Popup */}
       {showActionPopup && selectedCustomer && (
-        <div className="action-popup" style={{ left: popupPosition.x, top: popupPosition.y }}>
-          <div className="popup-content">
-            <h3>Customer Details</h3>
-            <div className="popup-field">
-              <strong>Name:</strong> {selectedCustomer.customerName}
+        <div className="action-popup-overlay" onClick={closePopup}>
+          <div className="action-popup" onClick={(e) => e.stopPropagation()}>
+            <div className="popup-content">
+              <div className="popup-actions">
+                <button className="btn-update" onClick={() => {
+                  const customerToUpdate = selectedCustomer;
+                  closePopup();
+                  handleUpdateCustomer(customerToUpdate);
+                }}>
+                  <FiEdit /> Update
+                </button>
+                <button className="btn-delete" onClick={() => {
+                  const customerToDelete = selectedCustomer;
+                  closePopup();
+                  handleDeleteClickOld(customerToDelete);
+                }}>
+                  <FiTrash2 /> Delete
+                </button>
+              </div>
             </div>
-            <div className="popup-field">
-              <strong>Email:</strong> {selectedCustomer.email}
-            </div>
-            <div className="popup-field">
-              <strong>Phone:</strong> {selectedCustomer.phoneNumber}
-            </div>
-            <div className="popup-field">
-              <strong>Gender:</strong> {selectedCustomer.gender}
-            </div>
-            <div className="popup-field">
-              <strong>Last Transaction:</strong> {
-                selectedCustomer.lastTransaction 
-                  ? new Date(selectedCustomer.lastTransaction).toLocaleDateString('en-GB', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric'
-                    })
-                  : 'No transactions'
-              }
-            </div>
-
-            <div className="popup-actions">
-              <button className="btn-update" onClick={() => {
-                const customerToUpdate = selectedCustomer; // Store reference
-                closePopup(); // Close popup first
-                handleUpdateCustomer(customerToUpdate); // Then handle update with stored reference
-              }}>
-                <FiEdit /> Update
-              </button>
-              <button className="btn-delete" onClick={() => {
-                const customerToDelete = selectedCustomer; // Store reference
-                closePopup(); // Close popup first
-                handleDeleteClick(customerToDelete); // Then handle delete with stored reference
-              }}>
-                <FiTrash2 /> Delete
-              </button>
-            </div>
-            <button className="btn-close" onClick={closePopup}>
-              <FiX />
-            </button>
           </div>
         </div>
       )}
+
+      {/* Sweet Dialog Component */}
+      <DialogComponent />
     </div>
   );
 };

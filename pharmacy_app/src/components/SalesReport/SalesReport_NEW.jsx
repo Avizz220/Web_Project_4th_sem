@@ -1,10 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import './SalesReport.css';
+import '../payment-style-popup.css';
 import { FiSearch, FiPackage, FiPlus, FiX, FiEdit, FiTrash2, FiDollarSign } from 'react-icons/fi';
 import { HiChevronLeft, HiChevronRight } from 'react-icons/hi';
 import { BsArrowUp, BsArrowDown, BsSun, BsMoon, BsCloud } from 'react-icons/bs';
+import { useSweetDialog } from '../SweetDialog/SweetDialog';
 
 const SalesReport = ({ onBack }) => {
+  // Sweet Dialog Hook
+  const { 
+    showSuccess, 
+    showError, 
+    showDeleteSuccess, 
+    showUpdateSuccess, 
+    showAddSuccess,
+    DialogComponent 
+  } = useSweetDialog();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [sortOption, setSortOption] = useState('newest');
@@ -18,7 +30,6 @@ const SalesReport = ({ onBack }) => {
   
   // Action popup state
   const [showActionPopup, setShowActionPopup] = useState(false);
-  const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
   const [activeRowId, setActiveRowId] = useState(null);
   
   // Form state
@@ -135,7 +146,7 @@ const SalesReport = ({ onBack }) => {
     setIsModalOpen(true);
   };
   
-  const handleDeleteClick = (sale) => {
+  const handleDeleteClickOld = (sale) => {
     console.log('Delete click - sale:', sale);
     setSelectedSale(sale);
     setIsDeleteModalOpen(true);
@@ -163,14 +174,14 @@ const SalesReport = ({ onBack }) => {
       console.log('Delete response:', result);
       
       if (result.success) {
-        alert(`Sale deleted successfully!`);
+        showDeleteSuccess(`Sale #${selectedSale.saleId}`);
         await fetchSales();
       } else {
-        alert(`Failed to delete sale: ${result.message}`);
+        showError(`Failed to delete sale: ${result.message}`, 'Delete Failed');
       }
     } catch (error) {
       console.error('Error deleting sale:', error);
-      alert('Failed to connect to server');
+      showError('Failed to connect to server', 'Connection Error');
     } finally {
       setIsDeleteModalOpen(false);
       setSelectedSale(null);
@@ -255,7 +266,11 @@ const SalesReport = ({ onBack }) => {
         const data = await response.json();
 
         if (data.success) {
-          alert(`Sale ${isEditMode ? 'updated' : 'added'} successfully!`);
+          if (isEditMode) {
+            showUpdateSuccess(`Sale #${selectedSale.saleId}`);
+          } else {
+            showAddSuccess(`New sale for ${saleData.customer}`);
+          }
           
           // Refresh the sales list
           await fetchSales();
@@ -286,13 +301,6 @@ const SalesReport = ({ onBack }) => {
 
   const handleRowClick = (sale, e) => {
     e.preventDefault();
-    
-    // Calculate position for the popup
-    const rect = e.currentTarget.getBoundingClientRect();
-    setPopupPosition({
-      x: rect.left + window.scrollX + rect.width / 2,
-      y: rect.top + window.scrollY
-    });
     
     setSelectedSale(sale);
     setShowActionPopup(true);
@@ -497,56 +505,26 @@ const SalesReport = ({ onBack }) => {
 
         {/* Action Popup */}
         {showActionPopup && selectedSale && (
-          <div className="action-popup-overlay">
-            <div 
-              className="action-popup"
-              style={{
-                position: 'absolute',
-                left: `${popupPosition.x}px`,
-                top: `${popupPosition.y}px`,
-                transform: 'translateX(-50%)'
-              }}
-            >
-              <div className="popup-header">
-                <h3>Sale #{selectedSale.saleId}</h3>
-              </div>
+          <div className="action-popup-overlay" onClick={closePopup}>
+            <div className="action-popup" onClick={(e) => e.stopPropagation()}>
               <div className="popup-content">
-                <div className="popup-field">
-                  <strong>Type:</strong> {selectedSale.saleType}
-                </div>
-                <div className="popup-field">
-                  <strong>Customer:</strong> {selectedSale.customer}
-                </div>
-                <div className="popup-field">
-                  <strong>Amount:</strong> ${parseFloat(selectedSale.amount).toFixed(2)}
-                </div>
-                <div className="popup-field">
-                  <strong>Status:</strong> {selectedSale.status}
-                </div>
-                <div className="popup-field">
-                  <strong>Date:</strong> {new Date(selectedSale.date).toLocaleDateString()}
+                <div className="popup-actions">
+                  <button className="btn-update" onClick={() => {
+                    const saleToUpdate = selectedSale;
+                    closePopup();
+                    handleUpdateSale(saleToUpdate);
+                  }}>
+                    <FiEdit /> Update
+                  </button>
+                  <button className="btn-delete" onClick={() => {
+                    const saleToDelete = selectedSale;
+                    closePopup();
+                    handleDeleteClickOld(saleToDelete);
+                  }}>
+                    <FiTrash2 /> Delete
+                  </button>
                 </div>
               </div>
-
-              <div className="popup-actions">
-                <button className="btn-update" onClick={() => {
-                  const saleToUpdate = selectedSale;
-                  closePopup();
-                  handleUpdateSale(saleToUpdate);
-                }}>
-                  <FiEdit /> Update
-                </button>
-                <button className="btn-delete" onClick={() => {
-                  const saleToDelete = selectedSale;
-                  closePopup();
-                  handleDeleteClick(saleToDelete);
-                }}>
-                  <FiTrash2 /> Delete
-                </button>
-              </div>
-              <button className="btn-close" onClick={closePopup}>
-                <FiX />
-              </button>
             </div>
           </div>
         )}
@@ -714,6 +692,9 @@ const SalesReport = ({ onBack }) => {
             </div>
           </div>
         )}
+
+        {/* Sweet Dialog Component */}
+        <DialogComponent />
       </div>
     </div>
   );

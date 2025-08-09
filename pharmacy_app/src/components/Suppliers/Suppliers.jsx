@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import './Suppliers.css';
-import { FiSearch, FiUsers, FiPackage, FiPlus, FiX, FiEdit, FiTrash2 } from 'react-icons/fi';
+import '../payment-style-popup.css';
+import { FiSearch, FiUsers, FiUserCheck, FiPlus, FiX, FiEdit, FiTrash2, FiPackage } from 'react-icons/fi';
 import { HiChevronLeft, HiChevronRight } from 'react-icons/hi';
 import { BsArrowUp, BsArrowDown, BsSun, BsMoon, BsCloud } from 'react-icons/bs';
+import { useSweetDialog } from '../SweetDialog/SweetDialog';
 
 const Suppliers = ({ onBack }) => {
+  // SweetDialog hook
+  const {
+    showDialog,
+    DialogComponent
+  } = useSweetDialog();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [sortOption, setSortOption] = useState('newest');
@@ -21,10 +29,11 @@ const Suppliers = ({ onBack }) => {
   const [selectedSupplier, setSelectedSupplier] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   
-  // Dropdown state
+  // Action popup state
   const [showActionPopup, setShowActionPopup] = useState(false);
-  const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
   const [activeRowId, setActiveRowId] = useState(null);
+  const [isEditingInPopup, setIsEditingInPopup] = useState(false);
+  const [editFormData, setEditFormData] = useState({});
   
   // Form state
   const [formData, setFormData] = useState({
@@ -41,15 +50,20 @@ const Suppliers = ({ onBack }) => {
 
   // Get current time-based greeting and icon
   const getTimeBasedGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) {
-      return { text: "Good Morning", icon: <BsSun /> };
-    } else if (hour >= 12 && hour < 17) {
-      return { text: "Good Afternoon", icon: <BsCloud /> };
-    } else if (hour >= 17 && hour < 21) {
-      return { text: "Good Evening", icon: <BsMoon /> };
-    } else {
-      return { text: "Good Night", icon: <BsMoon /> };
+    try {
+      const hour = new Date().getHours();
+      if (hour >= 5 && hour < 12) {
+        return { text: "Good Morning", icon: <BsSun /> };
+      } else if (hour >= 12 && hour < 17) {
+        return { text: "Good Afternoon", icon: <BsCloud /> };
+      } else if (hour >= 17 && hour < 21) {
+        return { text: "Good Evening", icon: <BsMoon /> };
+      } else {
+        return { text: "Good Night", icon: <BsMoon /> };
+      }
+    } catch (error) {
+      console.error('Error getting greeting:', error);
+      return { text: "Hello", icon: <BsSun /> };
     }
   };
 
@@ -146,7 +160,7 @@ const Suppliers = ({ onBack }) => {
     setIsModalOpen(true);
   };
   
-  const handleDeleteClick = (supplier) => {
+  const handleDeleteClickOld = (supplier) => {
     console.log('Delete click - supplier:', supplier);
     setSelectedSupplier(supplier);
     setIsDeleteModalOpen(true);
@@ -174,16 +188,28 @@ const Suppliers = ({ onBack }) => {
       console.log('Delete response:', result);
       
       if (result.success) {
-        alert(`Supplier ${selectedSupplier.name} deleted successfully!`);
+        showSweetDialog({
+          type: 'success',
+          title: 'Supplier Deleted',
+          message: `Supplier ${selectedSupplier.name} deleted successfully!`
+        });
         
         // Refresh the supplier list
         await fetchSuppliers();
       } else {
-        alert(`Failed to delete supplier: ${result.message}`);
+        showSweetDialog({
+          type: 'error',
+          title: 'Delete Failed',
+          message: `Failed to delete supplier: ${result.message}`
+        });
       }
     } catch (error) {
       console.error('Error deleting supplier:', error);
-      alert('Failed to connect to server');
+      showSweetDialog({
+        type: 'error',
+        title: 'Connection Error',
+        message: 'Failed to connect to server'
+      });
     } finally {
       setIsDeleteModalOpen(false);
       setSelectedSupplier(null);
@@ -271,6 +297,7 @@ const Suppliers = ({ onBack }) => {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`
             },
             body: JSON.stringify(supplierData)
           });
@@ -280,17 +307,35 @@ const Suppliers = ({ onBack }) => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`
             },
             body: JSON.stringify(supplierData)
           });
         }
 
         console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const result = await response.json();
         console.log('Response result:', result);
         
         if (result.success) {
-          alert(`Supplier ${formData.name} ${isEditMode ? 'updated' : 'added'} successfully!`);
+          if (isEditMode) {
+            showDialog({
+              type: 'success',
+              title: 'Supplier Updated',
+              message: `Supplier ${formData.name} updated successfully!`
+            });
+          } else {
+            showDialog({
+              type: 'success',
+              title: 'Supplier Added',
+              message: `Supplier ${formData.name} added successfully!`
+            });
+          }
           
           // Refresh the supplier list
           await fetchSuppliers();
@@ -298,11 +343,20 @@ const Suppliers = ({ onBack }) => {
           // Close modal
           handleCloseModal();
         } else {
-          setFormErrors({ general: result.message || 'Operation failed' });
+          console.error('API response error:', result);
+          showDialog({
+            type: 'error',
+            title: 'Operation Failed',
+            message: result.message || 'Operation failed. Please check your input and try again.'
+          });
         }
       } catch (error) {
         console.error('Error submitting supplier:', error);
-        setFormErrors({ general: 'Failed to connect to server' });
+        showDialog({
+          type: 'error',
+          title: 'Connection Error',
+          message: 'Failed to connect to server. Please check if the backend is running and try again.'
+        });
       } finally {
         setIsSubmitting(false);
       }
@@ -313,28 +367,46 @@ const Suppliers = ({ onBack }) => {
   const fetchSuppliers = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8080/api/suppliers');
+      setError(''); // Clear previous errors
+      
+      const response = await fetch('http://localhost:8080/api/suppliers', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken') || ''}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       
       if (data.success) {
         // Transform API data to match UI format
-        const transformedSuppliers = data.suppliers.map(supplier => ({
-          id: supplier.supplierId,
-          name: supplier.supplierName,
-          company: supplier.company,
-          phone: supplier.phoneNumber,
-          email: supplier.email,
-          supplyType: supplier.supplyType
+        const transformedSuppliers = (data.suppliers || []).map(supplier => ({
+          id: supplier.supplierId || supplier.id,
+          name: supplier.supplierName || supplier.name,
+          company: supplier.company || 'N/A',
+          phone: supplier.phoneNumber || supplier.phone || 'N/A',
+          email: supplier.email || 'N/A',
+          supplyType: supplier.supplyType || 'Medicine'
         }));
         setSuppliers(transformedSuppliers);
         setError('');
       } else {
+        console.error('API returned error:', data);
         setError(data.message || 'Failed to fetch suppliers');
         setSuppliers([]);
       }
     } catch (err) {
       console.error('Error fetching suppliers:', err);
-      setError('Failed to connect to server');
+      if (err.message.includes('Failed to fetch') || err.message.includes('ERR_CONNECTION_REFUSED')) {
+        setError('Cannot connect to server. Please make sure the backend is running on port 8080.');
+      } else {
+        setError(`Failed to load suppliers: ${err.message}`);
+      }
       setSuppliers([]);
     } finally {
       setLoading(false);
@@ -390,13 +462,6 @@ const Suppliers = ({ onBack }) => {
   const handleRowClick = (supplier, e) => {
     e.preventDefault();
     
-    // Calculate position for the popup
-    const rect = e.currentTarget.getBoundingClientRect();
-    setPopupPosition({
-      x: rect.left + window.scrollX + rect.width / 2,
-      y: rect.top + window.scrollY
-    });
-    
     setSelectedSupplier(supplier);
     setShowActionPopup(true);
     setActiveRowId(supplier.id);
@@ -407,6 +472,120 @@ const Suppliers = ({ onBack }) => {
     setShowActionPopup(false);
     setSelectedSupplier(null);
     setActiveRowId(null);
+    setIsEditingInPopup(false);
+    setEditFormData({});
+  };
+
+  // Inline editing handlers
+  const handleEditClick = () => {
+    setIsEditingInPopup(true);
+    setEditFormData({
+      name: selectedSupplier.name || '',
+      company: selectedSupplier.company || '',
+      email: selectedSupplier.email || '',
+      phone: selectedSupplier.phone || '',
+      supplyType: selectedSupplier.supplyType || 'Medicine'
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingInPopup(false);
+    setEditFormData({});
+  };
+
+  const handleEditInputChange = (e) => {
+    const { name, value } = e.target;
+    setEditFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedSupplier || !editFormData.name || !editFormData.company) {
+      showSweetDialog({
+        type: 'warning',
+        title: 'Validation Error',
+        message: 'Please fill in all required fields'
+      });
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`http://localhost:8080/api/suppliers/${selectedSupplier.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ...selectedSupplier,
+          name: editFormData.name,
+          company: editFormData.company,
+          email: editFormData.email,
+          phone: editFormData.phone,
+          supplyType: editFormData.supplyType
+        })
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        await fetchSuppliers();
+        closePopup();
+        setError('');
+      } else {
+        setError(data.message || 'Failed to update supplier');
+      }
+    } catch (error) {
+      console.error('Error updating supplier:', error);
+      setError('Error updating supplier. Please try again.');
+    }
+  };
+
+  const handleDeleteClick = async () => {
+    if (!selectedSupplier) return;
+    
+    // Use simple confirmation for now
+    if (window.confirm(`Are you sure you want to delete supplier ${selectedSupplier.name}? This action cannot be undone.`)) {
+      try {
+        const token = localStorage.getItem('authToken');
+        const response = await fetch(`http://localhost:8080/api/suppliers/${selectedSupplier.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token || ''}`
+          }
+        });
+
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+          showDialog({
+            type: 'success',
+            title: 'Supplier Deleted',
+            message: `Supplier ${selectedSupplier.name} has been deleted successfully.`
+          });
+          await fetchSuppliers();
+          closePopup();
+          setError('');
+        } else {
+          showDialog({
+            type: 'error',
+            title: 'Delete Failed',
+            message: data.message || 'Failed to delete supplier'
+          });
+        }
+      } catch (error) {
+        console.error('Error deleting supplier:', error);
+        showDialog({
+          type: 'error',
+          title: 'Connection Error',
+          message: 'Error deleting supplier. Please try again.'
+        });
+      }
+    }
   };
   
   // Handle clicks outside the popup to close it
@@ -783,47 +962,31 @@ const Suppliers = ({ onBack }) => {
       
       {/* Action Popup */}
       {showActionPopup && selectedSupplier && (
-        <div className="action-popup" style={{ left: popupPosition.x, top: popupPosition.y }}>
-          <div className="popup-content">
-            <h3>Supplier Details</h3>
-            <div className="popup-field">
-              <strong>Name:</strong> {selectedSupplier.name}
+        <div className="action-popup-overlay" onClick={closePopup}>
+          <div className="action-popup" onClick={(e) => e.stopPropagation()}>
+            <div className="popup-content">
+              <div className="popup-actions">
+                <button className="btn-update" onClick={() => {
+                  const supplierToUpdate = selectedSupplier;
+                  closePopup();
+                  handleUpdateSupplier(supplierToUpdate);
+                }}>
+                  <FiEdit /> Update
+                </button>
+                <button className="btn-delete" onClick={() => {
+                  const supplierToDelete = selectedSupplier;
+                  closePopup();
+                  handleDeleteClick();
+                }}>
+                  <FiTrash2 /> Delete
+                </button>
+              </div>
             </div>
-            <div className="popup-field">
-              <strong>Company:</strong> {selectedSupplier.company}
-            </div>
-            <div className="popup-field">
-              <strong>Email:</strong> {selectedSupplier.email}
-            </div>
-            <div className="popup-field">
-              <strong>Phone:</strong> {selectedSupplier.phone}
-            </div>
-            <div className="popup-field">
-              <strong>Type:</strong> {selectedSupplier.supplyType}
-            </div>
-
-            <div className="popup-actions">
-              <button className="btn-update" onClick={() => {
-                const supplierToUpdate = selectedSupplier; // Store reference
-                closePopup(); // Close popup first
-                handleUpdateSupplier(supplierToUpdate); // Then handle update with stored reference
-              }}>
-                <FiEdit /> Update
-              </button>
-              <button className="btn-delete" onClick={() => {
-                const supplierToDelete = selectedSupplier; // Store reference
-                closePopup(); // Close popup first
-                handleDeleteClick(supplierToDelete); // Then handle delete with stored reference
-              }}>
-                <FiTrash2 /> Delete
-              </button>
-            </div>
-            <button className="btn-close" onClick={closePopup}>
-              <FiX />
-            </button>
           </div>
         </div>
       )}
+
+      {DialogComponent()}
     </div>
   );
 };
