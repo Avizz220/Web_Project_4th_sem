@@ -496,7 +496,7 @@ const SalesReport = ({ onBack }) => {
       // Add summary section header
       doc.setFontSize(16);
       doc.setTextColor(34, 197, 94);
-      doc.text('📊 Sales Summary & Statistics', 15, summaryY);
+      doc.text(' Sales Summary & Statistics', 15, summaryY);
       
       // Calculate statistics
       const totalSales = sales.length;
@@ -593,7 +593,7 @@ const SalesReport = ({ onBack }) => {
         <div className="header-right">
           <div className="language-selector">
             <span>🌐 English (US)</span>
-            <span className="dropdown-arrow">▼</span>
+           
           </div>
           <div className="greeting-container">
             <span className="greeting-icon">{greeting.icon}</span>

@@ -615,7 +615,7 @@ const Suppliers = ({ onBack }) => {
         <div className="header-right">
           <div className="language-selector">
             <span>🌐 English (US)</span>
-            <span className="dropdown-arrow">▼</span>
+            
           </div>
           <div className="greeting-container">
             <span className="greeting-icon">{greeting.icon}</span>
