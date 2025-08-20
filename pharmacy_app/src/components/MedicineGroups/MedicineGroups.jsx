@@ -470,7 +470,7 @@ const MedicineGroups = ({ onBack }) => {
         <div className="header-right">
           <div className="language-selector">
             <span>🌐 English (US)</span>
-            <span className="dropdown-arrow">▼</span>
+           
           </div>
           <div className="greeting-container">
             <span className="greeting-icon">☀️</span>
@@ -504,7 +504,7 @@ const MedicineGroups = ({ onBack }) => {
             <FiSearch className="search-icon" />
             <input
               type="text"
-              placeholder="Search medicines..."
+              placeholder="      Search medicines..."
               value={medicineSearchQuery}
               onChange={handleMedicineSearch}
               className="search-input"
